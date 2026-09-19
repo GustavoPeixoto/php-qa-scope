@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<ruleset name="App"
+         xmlns="http://pmd.sf.net/ruleset/1.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://pmd.github.io/phpmd/ruleset_xml_schema.xsd">
+
+    <description>Code quality rules.</description>
+
+    <rule ref="rulesets/cleancode.xml"/>
+
+    <rule ref="rulesets/codesize.xml"/>
+
+    <rule ref="rulesets/controversial.xml"/>
+
+    <rule ref="rulesets/design.xml"/>
+
+    <rule ref="rulesets/naming.xml"/>
+
+    <rule ref="rulesets/unusedcode.xml"/>
+
+</ruleset>

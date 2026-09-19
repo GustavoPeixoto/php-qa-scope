@@ -1,0 +1,53 @@
+FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm
+
+ARG USERNAME=dev
+
+ARG WORKSPACE_DIR
+RUN : "${WORKSPACE_DIR:?WORKSPACE_DIR build arg is required}"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash \
+        build-essential \
+        ca-certificates \
+        curl \
+        fd-find \
+        git \
+        jq \
+        less \
+        openssh-client \
+        pkg-config \
+        python3 \
+        python3-pip \
+        python3-venv \
+        ripgrep \
+        tar \
+        unzip \
+        xz-utils \
+        zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Rename the node user, which is the image default.
+RUN usermod --login ${USERNAME} --move-home --home /home/${USERNAME} node \
+    && groupmod --new-name ${USERNAME} node
+
+# Allow the user to run sudo without a password.
+RUN mkdir -p /etc/sudoers.d \
+    && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
+    && chmod 0440 /etc/sudoers.d/${USERNAME}
+
+RUN corepack enable
+
+COPY docker/dev/bin/ /usr/local/bin/
+COPY docker/dev/.codex/ /usr/local/.codex/
+RUN chmod +x /usr/local/bin/codex /usr/local/bin/setup-codex-context-mode
+
+RUN git config --system --add safe.directory ${WORKSPACE_DIR}
+
+RUN yarn global add @fission-ai/openspec@1.11.0 \
+    && openspec config set profile custom \
+    && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
+
+RUN yarn global add context-mode@1.0.169
+
+USER ${USERNAME}

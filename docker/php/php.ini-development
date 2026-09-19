@@ -1,0 +1,16 @@
+; Development-only overrides.
+; Loaded after the common php.ini; repeated options here take precedence.
+[PHP]
+display_errors = On
+display_startup_errors = On
+
+[xdebug]
+;zend_extension=xdebug.so
+
+xdebug.mode = debug,develop
+xdebug.start_with_request = yes
+xdebug.client_host = 127.0.0.1
+xdebug.client_port = 9003
+xdebug.log = "${WORKSPACE_DIR}/logs/xdebug.log"
+xdebug.scream = 0
+xdebug.cli_color = 2

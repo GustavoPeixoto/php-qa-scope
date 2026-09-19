@@ -1,0 +1,12 @@
+# phpstan.neon — Static analysis
+parameters:
+    level: 6
+
+    # php-qa-scope:start
+    paths:
+        - 'bin'
+        - 'src'
+        - 'tests'
+    excludePaths:
+        analyse: []
+    # php-qa-scope:end

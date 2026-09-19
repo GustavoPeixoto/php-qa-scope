@@ -1,0 +1,96 @@
+{
+  "name": "${localWorkspaceFolderBasename}-dev",
+  "dockerComposeFile": [
+    "../../docker-compose.yml"
+  ],
+  "service": "dev",
+  "workspaceFolder": "/${localWorkspaceFolderBasename}",
+  "overrideCommand": true,
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "runServices": [
+    "dev",
+    "php"
+  ],
+  "shutdownAction": "none",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // eslint comes from the base image
+        "-dbaeumer.vscode-eslint",
+        "42crunch.vscode-openapi",
+        "desmondhiew.singular-plural",
+        "eamodio.gitlens",
+        "EditorConfig.EditorConfig",
+        "george-alisson.html-preview-vscode",
+        "Gruntfuggly.todo-tree",
+        "inferrinizzard.prettier-sql-vscode",
+        "mechatroner.rainbow-csv",
+        "ms-azuretools.vscode-containers",
+        "ms-azuretools.vscode-docker",
+        "openai.chatgpt",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "wmaurer.change-case"
+      ],
+      "settings": {
+        "[json]": {
+          "editor.defaultFormatter": "vscode.json-language-features"
+        },
+        "editor.find.loop": false,
+        "files.associations": {
+          "*.ini-development": "ini"
+        },
+        "git.autorefresh": true,
+        "gitlens.views.repositories.autoRefresh": true,
+        "gitlens.views.repositories.showBranchComparison": false,
+        "gitlens.views.repositories.showBranches": false,
+        "gitlens.views.repositories.showCommits": false,
+        "gitlens.views.repositories.showContributors": false,
+        "gitlens.views.repositories.showIncomingActivity": false,
+        "gitlens.views.repositories.showRemotes": false,
+        "gitlens.views.repositories.showStashes": false,
+        "gitlens.views.repositories.showTags": false,
+        "gitlens.views.repositories.showUpstreamStatus": false,
+        "gitlens.views.repositories.showWorktrees": false,
+        "gitlens.views.scm.grouped.hiddenViews": {
+          "branches": true,
+          "commits": true,
+          "contributors": true,
+          "fileHistory": true,
+          "launchpad": true,
+          "remotes": true,
+          "repositories": true,
+          "searchAndCompare": true,
+          "stashes": true,
+          "tags": true,
+          "worktrees": true
+        },
+        "gitlens.views.scm.grouped.views": {
+          "branches": false,
+          "commits": false,
+          "contributors": false,
+          "fileHistory": false,
+          "launchpad": false,
+          "remotes": false,
+          "repositories": false,
+          "searchAndCompare": false,
+          "stashes": false,
+          "tags": false,
+          "worktrees": false
+        },
+        "js/ts.validate.enabled": false,
+        "js/ts.format.enabled": false,
+        "php.validate.enable": false,
+        "php.suggest.basic": false,
+        "todo-tree.ripgrep.ripgrep": "/usr/bin/rg"
+      }
+    }
+  },
+  "remoteUser": "dev",
+  "mounts": [
+    "source=codex,target=/home/dev/.codex,type=volume"
+  ],
+  "postCreateCommand": "sudo chown -R dev:dev /home/dev/.codex && setup-codex-context-mode"
+}

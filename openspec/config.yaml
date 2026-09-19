@@ -1,0 +1,41 @@
+schema: spec-driven
+
+context: |
+  This repository develops `php-qa-scope`, a Composer package for synchronizing managed PHP QA scope blocks across native PHP QA tool configuration files.
+
+  Sources of truth:
+  - Read `AGENTS.md` as the operational entrypoint for agents and collaborators.
+  - Read `README.md` as the package entrypoint at the repository root.
+  - Read `conventions/language.md` for detailed language rules.
+  - Read `conventions/repository.md` for repository topology, package root layout, public package distribution, and documentation boundaries.
+  - Read `conventions/workflow.md` for the OpenSpec workflow.
+  - Read `conventions/git.md` when preparing branches, commits, pushes, or reviewing versioned state.
+  - Read `conventions/environment.md` for rules about environments, Dev Containers, Docker, Compose, the `dev` service, and PHP package tooling.
+  - Read `conventions/artifacts.md` for rules about durable artifacts, transient artifacts, handoffs, drafts, and `tmp/`.
+  - Read `conventions/context-mode.md` for rules about context-mode, `ctx_*` tools, Codex hooks, and preserving the context window.
+  - Avoid duplicating conventions in this context; use it as a map of canonical sources and keep artifact-specific rules in `rules`.
+
+rules:
+  proposal:
+    - "Write human-facing content in en-US, preserving required English headings when OpenSpec requires them."
+    - "End every `proposal.md` with `## Open Questions`."
+    - "In `## Open Questions`, record the priority, criticality, or importance of each open point; if there are no relevant pending items, state that explicitly."
+    - "Include scope, out of scope, risks, and consulted context sources when that helps future continuity."
+    - "Validate references to temporary handoffs, unversioned files, or external context; if any are necessary to understand the change, reproduce the relevant content in `proposal.md` itself."
+  design:
+    - "Use `design.md` when there is a structural decision, relevant alternative, risk, trade-off, or change that another agent needs to understand later."
+    - "Record decisions in objective language: context, decision, alternatives considered, risks, and implications."
+    - "Avoid repeating convention documents in full; reference the durable source and record only the necessary decision."
+    - "Record enough decisions and context for `design.md` to be understood without depending on temporary or unversioned files."
+  specs:
+    - "Write requirements in en-US, and preserve `MUST`, `SHALL`, `#### Scenario`, `WHEN`, `THEN`, and `AND`."
+    - "Each requirement must have at least one verifiable scenario."
+    - "When modifying an existing requirement, copy the entire block to `## MODIFIED Requirements` before changing it."
+    - "Avoid requirements that depend on conversational memory; make the expected behavior explicit."
+    - "Do not let requirements depend on temporary handoffs, unversioned files, or external context; incorporate the relevant normative content into the spec itself."
+  tasks:
+    - "Break tasks into reviewable and verifiable steps."
+    - "Include relevant context reading before durable edits."
+    - "Mark tasks complete as soon as they are finished."
+    - "Include OpenSpec validation before considering the change ready."
+    - "When relevant, include a task to audit temporary or unversioned references and confirm that artifacts remain self-sufficient."
