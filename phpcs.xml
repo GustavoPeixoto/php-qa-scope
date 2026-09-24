@@ -5,9 +5,9 @@
     <!-- php-qa-scope:start -->
     <file>.</file>
     <arg name="extensions" value="php"/>
-    <exclude-pattern type="relative">(?-i)^(?:[^/]+/){0,}\.[^/]+</exclude-pattern>
     <exclude-pattern type="relative">(?-i)^(?!(?:bin(?:/|$)|src(?:/|$)|tests(?:/|$))).+</exclude-pattern>
-    <exclude-pattern type="relative">(?-i)^(?!(?:bin(?:/|$)|src(?:/|$)|tests(?:/|$)))(?!.+\.php$).+/*</exclude-pattern>
+    <exclude-pattern type="relative">(?-i)^(?!(?:bin(?:/|$)|src(?:/|$)|tests(?:/|$))).+/*</exclude-pattern>
+    <exclude-pattern type="relative">(?-i)^(?:[^/]+/){0,}\.[^/]+/*</exclude-pattern>
     <!-- php-qa-scope:end -->
 
     <rule ref="PSR12"/>

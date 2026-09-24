@@ -23,6 +23,7 @@
     ],
     "minimum-stability": "dev",
     "scripts": {
+        "test": "phpunit",
         "sniffer-check": "phpcs --colors -p",
         "sniffer-fix": "phpcbf --colors -p",
         "fixer-check": "php-cs-fixer fix --config=php-cs-fixer.dist.php --dry-run --diff",
@@ -47,6 +48,7 @@
         "phpmd/phpmd": "^2.15",
         "phpstan/phpstan": "^2.2",
         "slevomat/coding-standard": "^8.31",
-        "squizlabs/php_codesniffer": "^4.0"
+        "squizlabs/php_codesniffer": "^4.0",
+        "phpunit/phpunit": "^12.0"
     }
 }

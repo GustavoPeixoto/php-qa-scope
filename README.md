@@ -84,6 +84,9 @@ tools:
 
 Directories are recursive. Files ending in `.php` are treated as specific files. New files inside included directories automatically enter the tool selection; adding, removing, or renaming a PHP file does not require a new `sync`.
 
+> [!WARNING]
+> During recursive scans, PHPStan and PHP-CS-Fixer ignore files and directories whose names begin with `.`. PHPCS ignores dotfiles but can enter hidden directories, and its dotfile behavior cannot be configured. To keep their file selections aligned, `sync` may add PHPCS include-selection and hidden-directory exclusion patterns even when YAML `exclude` is empty. List a hidden PHP file or directory explicitly in `include` to select it; configured excludes still win.
+
 The `tools` map declares which tools are managed. Keep a tool key when the project uses that tool. Remove a tool key when the project does not use that tool. For each listed tool, `include` and `exclude` must be present and may be empty arrays.
 
 For example, a project that uses PHPStan and PHP-CS-Fixer but not PHPCS may omit `phpcs`:
@@ -163,9 +166,11 @@ Use `check` in CI to verify committed configuration files are already synchroniz
 vendor/bin/php-qa-scope check
 ```
 
-`sync` validates all targets before writing. Missing, duplicated, reversed, or malformed markers cause an error; the command does not create markers automatically. Manual content inside a managed block is replaced. The rest of each file is preserved byte for byte.
+Both commands inspect each managed target independently. `check` reports `OK` or `OUT-OF-SYNC` for valid targets without changing files. `sync` reports `OK` for a matching target or replaces only the managed block of a divergent target and reports `UPDATED`. The rest of each updated file is preserved byte for byte.
 
-The report shows `OK`, `OUT-OF-SYNC`, or `UPDATED` per target. There is no built-in unified diff; review changes with Git after `sync`.
+Missing, duplicated, reversed, or malformed markers produce `ERROR <target>: <reason>` for that target; the command does not create markers automatically. A target error does not stop either command from visiting later targets. `sync` may update valid targets and still finish with an error because another target failed. After fixing that error, rerun `sync`: it inspects every managed target and does not rewrite targets that are already synchronized.
+
+Target statuses appear on standard output, while `ERROR` lines appear on standard error. There is no built-in unified diff; review changes with Git after `sync`.
 
 ## Supported Exclude Patterns
 
@@ -185,9 +190,9 @@ The YAML does not support `plugins/*/vendor/**`, `src/*.php`, `**/Generated*.php
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Configurations are synchronized, or sync completed. |
-| `1` | Check found blocks different from expected. |
-| `2` | Invalid YAML, pattern, arguments, markers, or file operation. |
+| `0` | All checked targets are synchronized, or every sync target was already synchronized or successfully updated. |
+| `1` | `check` found at least one out-of-sync target and no errors. |
+| `2` | Invalid arguments or project scope configuration, or at least one target error. Target errors take precedence over drift after all managed targets are visited. |
 
 ## Contributing
 

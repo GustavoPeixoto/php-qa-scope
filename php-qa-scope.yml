@@ -4,3 +4,16 @@ include:
   - bin
 
 exclude: []
+
+tools:
+  phpstan:
+    include: []
+    exclude: []
+
+  phpcs:
+    include: []
+    exclude: []
+
+  php-cs-fixer:
+    include: []
+    exclude: []

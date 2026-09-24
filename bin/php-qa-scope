@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        exit(GustavoPeixoto\PhpQaScope\Application::default()->run(
+            $_SERVER['argv'] ?? [],
+            null,
+            STDOUT,
+            STDERR,
+        ));
+    }
+}
+
+fwrite(STDERR, "ERROR Missing Composer autoload file. Run composer install.\n");
+exit(2);
