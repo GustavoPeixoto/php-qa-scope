@@ -44,7 +44,7 @@ RUN chmod +x /usr/local/bin/codex /usr/local/bin/setup-codex-context-mode
 
 RUN git config --system --add safe.directory ${WORKSPACE_DIR}
 
-RUN yarn global add @fission-ai/openspec@1.11.0 \
+RUN yarn global add @fission-ai/openspec@1.14.0 \
     && openspec config set profile custom \
     && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
 
