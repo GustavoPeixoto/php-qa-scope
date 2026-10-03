@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Sync;
+namespace GustavoPeixoto\PhpQaScope\Target;
 
 /**
  * Describes a native QA tool configuration file managed by php-qa-scope.

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Config\ToolScope;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Renderer\PhpCodeSnifferRenderer;
 use GustavoPeixoto\PhpQaScope\Renderer\PhpCsFixerRenderer;
 use GustavoPeixoto\PhpQaScope\Renderer\PhpStanRenderer;
 use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
-use GustavoPeixoto\PhpQaScope\Sync\TargetRegistry;
+use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
 
 /**

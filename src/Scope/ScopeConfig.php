@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Config;
+namespace GustavoPeixoto\PhpQaScope\Scope;
 
 /**
  * Holds the loaded php-qa-scope configuration.

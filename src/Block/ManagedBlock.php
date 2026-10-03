@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Sync;
+namespace GustavoPeixoto\PhpQaScope\Block;
 
+use GustavoPeixoto\PhpQaScope\Target\TargetFile;
 use RuntimeException;
 
 /**

@@ -34,6 +34,6 @@ final class CommandRegistry
      */
     public function get(string $name): Command
     {
-        return $this->commands[$name] ?? throw new RuntimeException('Usage: php-qa-scope <sync|check>');
+        return $this->commands[$name] ?? throw new RuntimeException('Usage: php-qa-scope <init|sync|check>');
     }
 }

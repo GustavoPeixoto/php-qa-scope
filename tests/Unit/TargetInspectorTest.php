@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Config\ToolScope;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Renderer\Renderer;
 use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
-use GustavoPeixoto\PhpQaScope\Sync\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;

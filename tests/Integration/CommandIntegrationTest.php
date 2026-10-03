@@ -6,8 +6,8 @@ namespace GustavoPeixoto\PhpQaScope\Tests\Integration;
 
 use GustavoPeixoto\PhpQaScope\Application;
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
-use GustavoPeixoto\PhpQaScope\Sync\SyncWriter;
-use GustavoPeixoto\PhpQaScope\Sync\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
+use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
@@ -88,12 +88,12 @@ final class CommandIntegrationTest extends TestCase
         $root = $this->tempRoot();
         $this->fixture($root, []);
         $planner = TargetInspector::default();
-        $writer = new SyncWriter();
+        $writer = new TargetWriter();
         $inspection = $planner->inspect($root, 'phpcs', $planner->scopes($root)['phpcs']);
         $this->put($root, 'phpcs.xml', 'concurrent edit');
 
         try {
-            $writer->write($root, $inspection);
+            $writer->write($root, $inspection->target->path, $inspection->before, $inspection->replacement());
             self::fail('Concurrent edit should fail.');
         } catch (RuntimeException) {
             self::assertSame('concurrent edit', file_get_contents($root . '/phpcs.xml'));
@@ -113,7 +113,12 @@ final class CommandIntegrationTest extends TestCase
         unlink($root . '/phpcs.xml');
 
         try {
-            (new SyncWriter())->write($root, $inspection);
+            (new TargetWriter())->write(
+                $root,
+                $inspection->target->path,
+                $inspection->before,
+                $inspection->replacement(),
+            );
             self::fail('Preparing a missing target should fail.');
         } catch (RuntimeException) {
             self::assertFileDoesNotExist($root . '/phpcs.xml');

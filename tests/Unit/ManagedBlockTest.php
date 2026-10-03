@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Sync\ManagedBlock;
-use GustavoPeixoto\PhpQaScope\Sync\TargetFile;
+use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
+use GustavoPeixoto\PhpQaScope\Target\TargetFile;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
 use RuntimeException;
 

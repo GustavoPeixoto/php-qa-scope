@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Config\EffectiveScope;
-use GustavoPeixoto\PhpQaScope\Config\ScopeLoader;
+use GustavoPeixoto\PhpQaScope\Scope\EffectiveScope;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;

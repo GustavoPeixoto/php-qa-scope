@@ -33,7 +33,7 @@ final readonly class Input
     public static function fromArgv(array $argv, ?string $root = null): self
     {
         if (count($argv) !== 2) {
-            throw new RuntimeException('Usage: php-qa-scope <sync|check>');
+            throw new RuntimeException('Usage: php-qa-scope <init|sync|check>');
         }
 
         $resolvedRoot = $root ?? getcwd();

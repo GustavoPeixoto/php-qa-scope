@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Sync;
+namespace GustavoPeixoto\PhpQaScope\Target;
 
-use GustavoPeixoto\PhpQaScope\Config\EffectiveScope;
-use GustavoPeixoto\PhpQaScope\Config\ScopeLoader;
-use GustavoPeixoto\PhpQaScope\Config\ToolScope;
+use GustavoPeixoto\PhpQaScope\Scope\EffectiveScope;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
+use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
 use RuntimeException;
 
 /**

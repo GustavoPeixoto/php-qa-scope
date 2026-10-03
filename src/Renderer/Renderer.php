@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Renderer;
 
-use GustavoPeixoto\PhpQaScope\Config\ToolScope;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 
 /**
  * Defines a renderer for one native QA tool configuration block.

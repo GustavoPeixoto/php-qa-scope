@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Config;
+namespace GustavoPeixoto\PhpQaScope\Scope;
 
 use GustavoPeixoto\PhpQaScope\Glob\PathValidator;
 use RuntimeException;

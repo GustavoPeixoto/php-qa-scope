@@ -53,6 +53,38 @@ final class CliTest extends TestCase
 
         rewind($err);
         self::assertSame(ExitCode::ERROR, $code);
-        self::assertStringContainsString('ERROR Usage: php-qa-scope <sync|check>', stream_get_contents($err));
+        self::assertStringContainsString('ERROR Usage: php-qa-scope <init|sync|check>', stream_get_contents($err));
+    }
+
+    /**
+     * Dispatches init rather than returning usage, and still rejects extra arguments.
+     */
+    public function testDispatchesInitAndRejectsExtraArguments(): void
+    {
+        $root = $this->tempRoot();
+        $app = Application::default();
+        $stderr = fopen('php://memory', 'w+');
+        self::assertSame(ExitCode::ERROR, $app->run(['php-qa-scope', 'init'], $root, null, $stderr));
+        rewind($stderr);
+        self::assertStringContainsString('No supported QA configuration', stream_get_contents($stderr));
+
+        $stderr = fopen('php://memory', 'w+');
+        self::assertSame(ExitCode::ERROR, $app->run(['php-qa-scope', 'init', 'extra'], $root, null, $stderr));
+        rewind($stderr);
+        self::assertStringContainsString('Usage: php-qa-scope <init|sync|check>', stream_get_contents($stderr));
+    }
+
+    /**
+     * Runs initialization through the package executable from a consumer project root.
+     */
+    public function testExecutableAcceptsInit(): void
+    {
+        $root = $this->tempRoot();
+        $this->put($root, 'phpstan.neon', "parameters:\n    level: 6\n");
+        $result = $this->process(['php', dirname(__DIR__, 2) . '/bin/php-qa-scope', 'init'], $root);
+
+        self::assertSame(ExitCode::SUCCESS, $result['code']);
+        self::assertSame("UPDATED phpstan.neon\n", $result['stdout']);
+        self::assertFileExists($root . '/php-qa-scope.yml');
     }
 }

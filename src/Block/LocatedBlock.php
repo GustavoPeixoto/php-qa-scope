@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Sync;
+namespace GustavoPeixoto\PhpQaScope\Block;
 
 /**
  * Describes the managed block located inside a target file.

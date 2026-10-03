@@ -7,8 +7,8 @@ namespace GustavoPeixoto\PhpQaScope\Command;
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
 use GustavoPeixoto\PhpQaScope\Cli\Input;
 use GustavoPeixoto\PhpQaScope\Cli\Output;
-use GustavoPeixoto\PhpQaScope\Config\ToolScope;
-use GustavoPeixoto\PhpQaScope\Sync\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
+use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
 use Throwable;
 
 /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Sync;
+namespace GustavoPeixoto\PhpQaScope\Target;
 
 use RuntimeException;
 
@@ -35,5 +35,30 @@ final class TargetRegistry
     public function get(string $tool): TargetFile
     {
         return $this->targets[$tool] ?? throw new RuntimeException("No target registered for '$tool'.");
+    }
+
+    /**
+     * Discovers exact supported native filenames in the project root.
+     *
+     * @param string $root Project root to inspect without recursive discovery.
+     * @return array<string, TargetFile> Existing native files indexed by tool.
+     */
+    public function discover(string $root): array
+    {
+        $found = [];
+        foreach ($this->targets as $tool => $target) {
+            if (is_file($root . '/' . $target->path)) {
+                $found[$tool] = $target;
+            }
+        }
+
+        if ($found === []) {
+            throw new RuntimeException(
+                'No supported QA configuration found in the project root. '
+                . 'Expected phpcs.xml, phpstan.neon, or php-cs-fixer.dist.php.',
+            );
+        }
+
+        return $found;
     }
 }

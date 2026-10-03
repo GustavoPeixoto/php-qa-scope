@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Sync;
+namespace GustavoPeixoto\PhpQaScope\Target;
+
+use GustavoPeixoto\PhpQaScope\Block\LocatedBlock;
 
 /**
  * Holds the comparison and file data for one inspected native target.

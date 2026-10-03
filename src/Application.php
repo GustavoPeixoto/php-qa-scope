@@ -9,9 +9,14 @@ use GustavoPeixoto\PhpQaScope\Cli\Input;
 use GustavoPeixoto\PhpQaScope\Cli\Output;
 use GustavoPeixoto\PhpQaScope\Command\CheckCommand;
 use GustavoPeixoto\PhpQaScope\Command\CommandRegistry;
+use GustavoPeixoto\PhpQaScope\Command\InitCommand;
 use GustavoPeixoto\PhpQaScope\Command\SyncCommand;
-use GustavoPeixoto\PhpQaScope\Sync\SyncWriter;
-use GustavoPeixoto\PhpQaScope\Sync\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Initializer\Initializer;
+use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
+use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
+use GustavoPeixoto\PhpQaScope\Synchronizer\Synchronizer;
+use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
 use Throwable;
 
 /**
@@ -36,10 +41,12 @@ final class Application
     public static function default(): self
     {
         $inspector = TargetInspector::default();
+        $synchronizer = new Synchronizer($inspector, new TargetWriter());
 
         return new self(new CommandRegistry([
             new CheckCommand($inspector),
-            new SyncCommand($inspector, new SyncWriter()),
+            new SyncCommand($inspector, $synchronizer),
+            new InitCommand(new Initializer($synchronizer, new TargetInitializer(InsertionLocatorRegistry::default()))),
         ]));
     }
 
