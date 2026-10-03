@@ -63,3 +63,6 @@ RUN chmod +x \
     /usr/local/bin/start-headroom-proxy
 
 USER ${USERNAME}
+
+RUN openspec config set profile custom \
+    && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
