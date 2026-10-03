@@ -31,7 +31,7 @@ final class TargetInitializerTest extends TestCase
         $targetInitializer = $this->preparer();
 
         self::assertTrue($targetInitializer->insert($root, Tool::Phpstan));
-        $after = (string) file_get_contents($root . '/phpstan.neon');
+        $after = (string)file_get_contents($root . '/phpstan.neon');
         $pair = "    # php-qa-scope:start\r\n    # php-qa-scope:end\r\n";
         self::assertSame($before, str_replace($pair, '', $after));
         self::assertSame(0640, fileperms($root . '/phpstan.neon') & 0777);
@@ -118,7 +118,7 @@ final class TargetInitializerTest extends TestCase
     /**
      * Creates a preparer with a controlled insertion boundary for classification tests.
      *
-     * @return TargetInitializer Preparation workflow for a parameters header.
+     * @return \GustavoPeixoto\PhpQaScope\Target\TargetInitializer Preparation workflow for a parameters header.
      */
     private function preparer(): TargetInitializer
     {
@@ -127,11 +127,12 @@ final class TargetInitializerTest extends TestCase
              * Inserts after a parameters header in the test fixture.
              *
              * @param string $contents Original fixture bytes.
+             *
              * @return int Offset after the header's first newline.
              */
             public function locate(string $contents): int
             {
-                return (int) strpos($contents, "\n") + 1;
+                return (int)strpos($contents, "\n") + 1;
             }
         };
 

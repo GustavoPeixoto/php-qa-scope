@@ -14,9 +14,9 @@ final readonly class TargetInspection
     /**
      * Creates a target-scoped inspection result.
      *
-     * @param TargetFile $target Inspected native configuration target.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetFile $target Inspected native configuration target.
      * @param string $before Native file content observed during inspection.
-     * @param LocatedBlock $block Validated managed block location.
+     * @param \GustavoPeixoto\PhpQaScope\Block\LocatedBlock $block Validated managed block location.
      * @param string $expected Rendered managed block with LF line endings.
      * @param bool $changed Whether the current managed block differs.
      */

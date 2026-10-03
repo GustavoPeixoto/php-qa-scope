@@ -17,10 +17,10 @@ final class TargetInitializer
     /**
      * Creates the marker insertion workflow with an injected strategy registry.
      *
-     * @param InsertionLocatorRegistry $locators Insertion strategies indexed by tool.
-     * @param TargetRegistry $targets Native filenames, syntax, and indentation.
-     * @param BlockLocator $blockLocator Strict validator for existing and inserted pairs.
-     * @param TargetWriter $writer Safe native reads and replacements.
+     * @param \GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry $locators Insertion strategies indexed by tool.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetRegistry $targets Native filenames, syntax, and indentation.
+     * @param \GustavoPeixoto\PhpQaScope\Block\BlockLocator $blockLocator Strict validator for existing and inserted pairs.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetWriter $writer Safe native reads and replacements.
      */
     public function __construct(
         private readonly InsertionLocatorRegistry $locators,
@@ -49,7 +49,8 @@ final class TargetInitializer
      * Adds an absent pair and leaves every pre-existing valid pair unchanged.
      *
      * @param string $root Project root containing native configuration files.
-     * @param Tool $tool Managed tool whose markers are being prepared.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Managed tool whose markers are being prepared.
+     *
      * @return bool Whether an empty pair was successfully written.
      */
     public function insert(string $root, Tool $tool): bool

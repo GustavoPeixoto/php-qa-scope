@@ -16,7 +16,7 @@ final class ScopeCalculator
     /**
      * Creates the calculator with the pattern compiler used for exclusions.
      *
-     * @param PatternCompiler $patternCompiler Compiler for supported exclude patterns.
+     * @param \GustavoPeixoto\PhpQaScope\Glob\PatternCompiler $patternCompiler Compiler for supported exclude patterns.
      */
     public function __construct(private readonly PatternCompiler $patternCompiler)
     {
@@ -35,8 +35,9 @@ final class ScopeCalculator
     /**
      * Resolves effective include and exclude lists for every managed tool.
      *
-     * @param ScopeConfig $config Loaded package scope configuration.
-     * @return array<string, ToolScope> Effective scopes indexed by tool name.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ScopeConfig $config Loaded package scope configuration.
+     *
+     * @return array<string, \GustavoPeixoto\PhpQaScope\Scope\ToolScope> Effective scopes indexed by tool name.
      */
     public function calculate(ScopeConfig $config): array
     {
@@ -75,6 +76,7 @@ final class ScopeCalculator
      * Normalizes strings into a sorted unique list.
      *
      * @param list<string> $values Values to normalize.
+     *
      * @return list<string> Sorted values with duplicates removed.
      */
     private function stringSet(array $values): array
@@ -89,6 +91,7 @@ final class ScopeCalculator
      * Removes child includes when a parent directory already covers them.
      *
      * @param list<string> $paths Include paths to compact.
+     *
      * @return list<string> Include paths with redundant children removed.
      */
     private function compactIncludes(array $paths): array
@@ -116,6 +119,7 @@ final class ScopeCalculator
      *
      * @param string $path Literal path to test.
      * @param list<string> $exclude Exclude patterns to evaluate.
+     *
      * @return bool True when the path is excluded.
      */
     private function isExcludedPath(string $path, array $exclude): bool

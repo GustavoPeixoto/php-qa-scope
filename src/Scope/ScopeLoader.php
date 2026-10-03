@@ -18,7 +18,8 @@ final class ScopeLoader
      * Loads a configuration file from disk.
      *
      * @param string $file Path to the php-qa-scope YAML file.
-     * @return ScopeConfig Parsed and validated configuration.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Scope\ScopeConfig Parsed and validated configuration.
      */
     public function load(string $file): ScopeConfig
     {
@@ -92,6 +93,7 @@ final class ScopeLoader
      * @param mixed $value Value expected to be a list of strings.
      * @param string $location Human-readable configuration location.
      * @param bool $validateLiteral Whether entries must be literal paths instead of exclude patterns.
+     *
      * @return list<string> Sorted unique list of validated entries.
      */
     private function stringList(mixed $value, string $location, bool $validateLiteral = true): array

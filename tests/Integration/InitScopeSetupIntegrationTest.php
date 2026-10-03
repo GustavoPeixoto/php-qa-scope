@@ -53,7 +53,11 @@ final class InitScopeSetupIntegrationTest extends TestCase
         $this->put($root, 'phpstan.neon', 'parameters:');
         $this->put($root, 'php-qa-scope.yml', $yaml);
 
-        [$code, $stdout, $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
+        [
+            $code,
+            $stdout,
+            $stderr,
+        ] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
         self::assertSame(ExitCode::SUCCESS, $code);
         self::assertSame('', $stdout);
         self::assertSame('', $stderr);
@@ -77,9 +81,11 @@ final class InitScopeSetupIntegrationTest extends TestCase
             [$code] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
             self::assertSame(ExitCode::ERROR, $code);
             self::assertSame('original native configuration', file_get_contents($root . '/phpstan.neon'));
-            if ($yaml !== null) {
-                self::assertSame($yaml, file_get_contents($root . '/php-qa-scope.yml'));
+            if ($yaml === null) {
+                continue;
             }
+
+            self::assertSame($yaml, file_get_contents($root . '/php-qa-scope.yml'));
         }
     }
 
@@ -96,7 +102,10 @@ final class InitScopeSetupIntegrationTest extends TestCase
             }
             symlink($root . '/actual.yml', $root . '/php-qa-scope.yml');
 
-            [$code, , $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
+            [
+                $code, ,
+                $stderr,
+            ] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
             self::assertSame(ExitCode::ERROR, $code);
             self::assertStringContainsString('symbolic link', $stderr);
             self::assertTrue(is_link($root . '/php-qa-scope.yml'));
@@ -114,7 +123,10 @@ final class InitScopeSetupIntegrationTest extends TestCase
         $this->put($root, 'php-qa-scope.yml', $yaml);
         $inode = fileinode($root . '/php-qa-scope.yml');
 
-        [$code, , $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
+        [
+            $code, ,
+            $stderr,
+        ] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
 
         self::assertSame(ExitCode::ERROR, $code);
         self::assertStringContainsString('No supported QA configuration', $stderr);
@@ -131,7 +143,10 @@ final class InitScopeSetupIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
 
-        [$code, , $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
+        [
+            $code, ,
+            $stderr,
+        ] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
 
         self::assertSame(ExitCode::ERROR, $code);
         self::assertStringContainsString('No supported QA configuration', $stderr);
@@ -151,25 +166,31 @@ final class InitScopeSetupIntegrationTest extends TestCase
             }
             symlink($root . '/actual.yml', $root . '/php-qa-scope.yml');
 
-            [$code, , $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
+            [
+                $code, ,
+                $stderr,
+            ] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
 
             self::assertSame(ExitCode::ERROR, $code);
             self::assertStringNotContainsString('symbolic link', $stderr);
             self::assertStringContainsString('No supported QA configuration', $stderr);
             self::assertTrue(is_link($root . '/php-qa-scope.yml'));
             self::assertSame([], glob($root . '/.php-qa-scope-*'));
-            if (!$dangling) {
-                self::assertSame('consumer configuration', file_get_contents($root . '/actual.yml'));
+            if ($dangling) {
+                continue;
             }
+
+            self::assertSame('consumer configuration', file_get_contents($root . '/actual.yml'));
         }
     }
 
     /**
      * Executes a command while capturing its status and output streams.
      *
-     * @param Application $app Application containing the command registry.
+     * @param \GustavoPeixoto\PhpQaScope\Application $app Application containing the command registry.
      * @param list<string> $argv Arguments selecting the command.
      * @param string $root Temporary consumer project root.
+     *
      * @return array{int, string, string} Exit code, standard output, and standard error.
      */
     private function runApp(Application $app, array $argv, string $root): array
@@ -182,7 +203,11 @@ final class InitScopeSetupIntegrationTest extends TestCase
             rewind($stdout);
             rewind($stderr);
 
-            return [$code, (string) stream_get_contents($stdout), (string) stream_get_contents($stderr)];
+            return [
+                $code,
+                (string)stream_get_contents($stdout),
+                (string)stream_get_contents($stderr),
+            ];
         } finally {
             fclose($stdout);
             fclose($stderr);

@@ -49,7 +49,7 @@ final class PhpCodeSnifferInsertionLocatorTest extends TestCase
             );
 
             self::assertTrue($targetInitializer->insert($root, Tool::Phpcs));
-            $after = (string) file_get_contents($root . '/phpcs.xml');
+            $after = (string)file_get_contents($root . '/phpcs.xml');
             $pair = $eol . '    <!-- php-qa-scope:start -->' . $eol
                 . '    <!-- php-qa-scope:end -->' . $eol;
             self::assertSame($before, str_replace($pair, '', $after));

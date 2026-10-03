@@ -20,7 +20,7 @@ final class CheckCommand implements Command
     /**
      * Creates the command with its shared target inspector.
      *
-     * @param TargetInspector $inspector Loader and inspector for managed targets.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetInspector $inspector Loader and inspector for managed targets.
      */
     public function __construct(private readonly TargetInspector $inspector)
     {
@@ -39,8 +39,9 @@ final class CheckCommand implements Command
     /**
      * Inspects all managed targets and aggregates their results.
      *
-     * @param Input $input Parsed command input.
-     * @param ConsoleWriterInterface $console Destination for statuses and guidance.
+     * @param \GustavoPeixoto\PhpQaScope\Cli\Input $input Parsed command input.
+     * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $console Destination for statuses and guidance.
+     *
      * @return int Exit code for errors, drift, or success.
      */
     public function execute(Input $input, ConsoleWriterInterface $console): int
@@ -66,9 +67,10 @@ final class CheckCommand implements Command
      * Inspects one target and releases its file data before the next target.
      *
      * @param string $root Project root containing target files.
-     * @param Tool $tool Managed tool name.
-     * @param ToolScope $scope Effective scope for the tool.
-     * @param ConsoleWriterInterface $console Destination for the target result.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Managed tool name.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Effective scope for the tool.
+     * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $console Destination for the target result.
+     *
      * @return int Target result as a command exit code.
      */
     private function checkTarget(string $root, Tool $tool, ToolScope $scope, ConsoleWriterInterface $console): int

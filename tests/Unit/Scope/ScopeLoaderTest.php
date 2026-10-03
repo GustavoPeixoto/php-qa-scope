@@ -23,10 +23,17 @@ final class ScopeLoaderTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->put($root, 'php-qa-scope.yml', Yaml::dump([
-            'include' => ['tests', 'src', 'src'],
+            'include' => [
+                'tests',
+                'src',
+                'src',
+            ],
             'exclude' => ['**/legacy/**'],
             'tools' => [
-                'phpstan' => ['include' => ['bin'], 'exclude' => ['tests/fixtures/**']],
+                'phpstan' => [
+                    'include' => ['bin'],
+                    'exclude' => ['tests/fixtures/**'],
+                ],
             ],
         ], 5));
 
@@ -44,12 +51,41 @@ final class ScopeLoaderTest extends TestCase
     {
         $root = $this->tempRoot();
         $invalidScopes = [
-            ['include' => ['src'], 'exclude' => [], 'tools' => ['phpmd' => ['include' => [], 'exclude' => []]]],
-            ['include' => ['src'], 'exclude' => [], 'tools' => ['phpstan' => ['include' => []]]],
-            ['include' => ['src'], 'exclude' => null, 'tools' => []],
-            ['include' => 'src', 'exclude' => [], 'tools' => []],
-            ['include' => ['../src'], 'exclude' => [], 'tools' => []],
-            ['include' => ['src'], 'exclude' => [], 'tools' => ['phpstan' => null]],
+            [
+                'include' => ['src'],
+                'exclude' => [],
+                'tools' => [
+                    'phpmd' => [
+                        'include' => [],
+                        'exclude' => [],
+                    ],
+                ]
+            ],
+            [
+                'include' => ['src'],
+                'exclude' => [],
+                'tools' => ['phpstan' => ['include' => []]]
+            ],
+            [
+                'include' => ['src'],
+                'exclude' => null,
+                'tools' => []
+            ],
+            [
+                'include' => 'src',
+                'exclude' => [],
+                'tools' => []
+            ],
+            [
+                'include' => ['../src'],
+                'exclude' => [],
+                'tools' => []
+            ],
+            [
+                'include' => ['src'],
+                'exclude' => [],
+                'tools' => ['phpstan' => null]
+            ],
         ];
 
         foreach ($invalidScopes as $scopes) {
@@ -74,10 +110,17 @@ final class ScopeLoaderTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->put($root, 'php-qa-scope.yml', Yaml::dump([
-            'include' => ['src', 'src/legacy', 'tests'],
+            'include' => [
+                'src',
+                'src/legacy',
+                'tests',
+            ],
             'exclude' => ['**/legacy/**'],
             'tools' => [
-                'phpstan' => ['include' => ['bin'], 'exclude' => ['tests/fixtures/**']],
+                'phpstan' => [
+                    'include' => ['bin'],
+                    'exclude' => ['tests/fixtures/**'],
+                ],
             ],
         ], 5));
 
@@ -87,6 +130,7 @@ final class ScopeLoaderTest extends TestCase
         self::assertSame(['bin', 'src', 'tests'], $scopes['phpstan']->include);
         self::assertSame(['**/legacy/**', 'tests/fixtures/**'], $scopes['phpstan']->exclude);
     }
+
     /**
      * Retains the external diagnostic when an unknown key cannot become a tool case.
      */
@@ -96,7 +140,12 @@ final class ScopeLoaderTest extends TestCase
         $this->put($root, 'php-qa-scope.yml', Yaml::dump([
             'include' => ['src'],
             'exclude' => [],
-            'tools' => ['unknown-tool' => ['include' => [], 'exclude' => []]],
+            'tools' => [
+                'unknown-tool' => [
+                    'include' => [],
+                    'exclude' => [],
+                ],
+            ],
         ], 5));
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage("tools: unknown key 'unknown-tool'.");

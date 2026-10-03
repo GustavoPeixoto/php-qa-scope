@@ -15,7 +15,7 @@ final class TargetRegistry
     /**
      * Creates a registry from target definitions with matching canonical tool keys.
      *
-     * @param array<string, TargetFile> $targets Target files indexed by tool backing value.
+     * @param array<string, \GustavoPeixoto\PhpQaScope\Target\TargetFile> $targets Target files indexed by tool backing value.
      */
     public function __construct(private readonly array $targets)
     {
@@ -50,8 +50,9 @@ final class TargetRegistry
     /**
      * Returns the target file registered for a tool.
      *
-     * @param Tool $tool Tool name to resolve.
-     * @return TargetFile Native configuration target for the tool.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Tool name to resolve.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Target\TargetFile Native configuration target for the tool.
      */
     public function get(Tool $tool): TargetFile
     {
@@ -64,15 +65,18 @@ final class TargetRegistry
      * Discovers exact supported native filenames in the project root.
      *
      * @param string $root Project root to inspect without recursive discovery.
-     * @return array<string, TargetFile> Existing native files indexed by tool.
+     *
+     * @return array<string, \GustavoPeixoto\PhpQaScope\Target\TargetFile> Existing native files indexed by tool.
      */
     public function discover(string $root): array
     {
         $found = [];
         foreach ($this->targets as $tool => $target) {
-            if (is_file($root . '/' . $target->path)) {
-                $found[$tool] = $target;
+            if (!is_file($root . '/' . $target->path)) {
+                continue;
             }
+
+            $found[$tool] = $target;
         }
 
         if ($found === []) {

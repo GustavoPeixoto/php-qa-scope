@@ -72,9 +72,11 @@ final class ConsoleWriter implements ConsoleWriterInterface
     private function write(string $text): void
     {
         $this->stdout .= $text;
-        if (is_resource($this->out)) {
-            fwrite($this->out, $text);
+        if (!is_resource($this->out)) {
+            return;
         }
+
+        fwrite($this->out, $text);
     }
 
     /**
@@ -85,8 +87,10 @@ final class ConsoleWriter implements ConsoleWriterInterface
     private function writeError(string $text): void
     {
         $this->stderr .= $text;
-        if (is_resource($this->err)) {
-            fwrite($this->err, $text);
+        if (!is_resource($this->err)) {
+            return;
         }
+
+        fwrite($this->err, $text);
     }
 }

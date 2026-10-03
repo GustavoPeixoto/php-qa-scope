@@ -15,7 +15,7 @@ final class RendererRegistry
     /**
      * Creates a registry from renderer instances.
      *
-     * @param array<string, Renderer> $renderers Renderers indexed by tool name.
+     * @param array<string, \GustavoPeixoto\PhpQaScope\Renderer\Renderer> $renderers Renderers indexed by tool name.
      */
     public function __construct(private readonly array $renderers)
     {
@@ -38,8 +38,9 @@ final class RendererRegistry
     /**
      * Returns the renderer registered for a tool.
      *
-     * @param Tool $tool Tool name to resolve.
-     * @return Renderer Renderer for the requested tool.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Tool name to resolve.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Renderer\Renderer Renderer for the requested tool.
      */
     public function get(Tool $tool): Renderer
     {

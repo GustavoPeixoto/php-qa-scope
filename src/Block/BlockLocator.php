@@ -16,8 +16,9 @@ final class BlockLocator
      * Locates the content between managed start and end markers.
      *
      * @param string $text Full target file content.
-     * @param TargetFile $target Target file marker definition.
-     * @return LocatedBlock Located block content and replacement metadata.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetFile $target Target file marker definition.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Block\LocatedBlock Located block content and replacement metadata.
      */
     public function locate(string $text, TargetFile $target): LocatedBlock
     {

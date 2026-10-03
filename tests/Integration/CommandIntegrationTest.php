@@ -29,7 +29,10 @@ final class CommandIntegrationTest extends TestCase
         $this->fixture($root, []);
         $app = Application::default();
 
-        [$code, $stdout] = $this->runApp($app, ['php-qa-scope', 'check'], $root);
+        [
+            $code,
+            $stdout,
+        ] = $this->runApp($app, ['php-qa-scope', 'check'], $root);
         self::assertSame(ExitCode::DRIFT, $code);
         self::assertStringContainsString("OUT-OF-SYNC phpcs.xml\n", $stdout);
         self::assertStringContainsString("OUT-OF-SYNC phpstan.neon\n", $stdout);
@@ -39,12 +42,18 @@ final class CommandIntegrationTest extends TestCase
         self::assertIsString($before);
         self::assertStringContainsString('    <!-- outside -->', $before);
 
-        [$code, $stdout] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
+        [
+            $code,
+            $stdout,
+        ] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
         self::assertSame(ExitCode::SUCCESS, $code);
         self::assertStringContainsString("UPDATED phpcs.xml\n", $stdout);
-        self::assertStringContainsString('    <!-- outside -->', (string) file_get_contents($root . '/phpcs.xml'));
+        self::assertStringContainsString('    <!-- outside -->', (string)file_get_contents($root . '/phpcs.xml'));
 
-        [$code, $stdout] = $this->runApp($app, ['php-qa-scope', 'check'], $root);
+        [
+            $code,
+            $stdout,
+        ] = $this->runApp($app, ['php-qa-scope', 'check'], $root);
         self::assertSame(ExitCode::SUCCESS, $code);
         self::assertStringContainsString("OK phpcs.xml\n", $stdout);
     }
@@ -56,13 +65,13 @@ final class CommandIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, []);
-        $xml = (string) file_get_contents($root . '/phpcs.xml');
+        $xml = (string)file_get_contents($root . '/phpcs.xml');
         $this->put($root, 'phpcs.xml', str_replace("\n", "\r\n", $xml));
 
         $app = Application::default();
         self::assertSame(ExitCode::SUCCESS, $this->runApp($app, ['php-qa-scope', 'sync'], $root)[0]);
 
-        $synced = (string) file_get_contents($root . '/phpcs.xml');
+        $synced = (string)file_get_contents($root . '/phpcs.xml');
         self::assertStringContainsString("    <!-- outside -->\r\n", $synced);
         self::assertSame(0, preg_match('/(?<!\r)\n/', $synced));
         self::assertSame(ExitCode::SUCCESS, $this->runApp($app, ['php-qa-scope', 'sync'], $root)[0]);
@@ -77,7 +86,10 @@ final class CommandIntegrationTest extends TestCase
         $this->fixture($root, []);
         $this->put($root, 'phpcs.xml', 'broken');
 
-        [$code, , $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'check'], $root);
+        [
+            $code, ,
+            $stderr,
+        ] = $this->runApp(Application::default(), ['php-qa-scope', 'check'], $root);
 
         self::assertSame(ExitCode::ERROR, $code);
         self::assertStringContainsString('ERROR phpcs.xml: expected exactly one php-qa-scope:start marker.', $stderr);
@@ -142,7 +154,11 @@ final class CommandIntegrationTest extends TestCase
         $this->put($root, 'phpstan.neon', 'broken');
         $app = Application::default();
 
-        [$code, $stdout, $stderr] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
+        [
+            $code,
+            $stdout,
+            $stderr,
+        ] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
 
         self::assertSame(ExitCode::ERROR, $code);
         self::assertSame("UPDATED phpcs.xml\nOK php-cs-fixer.dist.php\n", $stdout);
@@ -151,11 +167,15 @@ final class CommandIntegrationTest extends TestCase
             $stderr,
         );
         self::assertSame('broken', file_get_contents($root . '/phpstan.neon'));
-        $updated = (string) file_get_contents($root . '/phpcs.xml');
+        $updated = (string)file_get_contents($root . '/phpcs.xml');
         $inode = fileinode($root . '/phpcs.xml');
 
         $this->put($root, 'phpstan.neon', "parameters:\n    # php-qa-scope:start\n    # php-qa-scope:end\n");
-        [$code, $stdout, $stderr] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
+        [
+            $code,
+            $stdout,
+            $stderr,
+        ] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
 
         self::assertSame(ExitCode::SUCCESS, $code);
         self::assertSame("UPDATED phpstan.neon\nOK phpcs.xml\nOK php-cs-fixer.dist.php\n", $stdout);
@@ -174,13 +194,17 @@ final class CommandIntegrationTest extends TestCase
         $this->fixture($root, []);
         $this->put($root, 'phpcs.xml', 'broken');
 
-        [$code, $stdout, $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'sync'], $root);
+        [
+            $code,
+            $stdout,
+            $stderr,
+        ] = $this->runApp(Application::default(), ['php-qa-scope', 'sync'], $root);
 
         self::assertSame(ExitCode::ERROR, $code);
         self::assertStringContainsString("UPDATED phpstan.neon\n", $stdout);
         self::assertStringContainsString("UPDATED php-cs-fixer.dist.php\n", $stdout);
         self::assertStringContainsString('ERROR phpcs.xml:', $stderr);
-        self::assertStringContainsString('paths:', (string) file_get_contents($root . '/phpstan.neon'));
+        self::assertStringContainsString('paths:', (string)file_get_contents($root . '/phpstan.neon'));
         self::assertSame('broken', file_get_contents($root . '/phpcs.xml'));
     }
 
@@ -193,7 +217,11 @@ final class CommandIntegrationTest extends TestCase
         $this->fixture($root, []);
         $this->put($root, 'phpstan.neon', 'broken');
 
-        [$code, $stdout, $stderr] = $this->runApp(Application::default(), ['php-qa-scope', 'check'], $root);
+        [
+            $code,
+            $stdout,
+            $stderr,
+        ] = $this->runApp(Application::default(), ['php-qa-scope', 'check'], $root);
 
         self::assertSame(ExitCode::ERROR, $code);
         self::assertStringContainsString("OUT-OF-SYNC phpcs.xml\n", $stdout);
@@ -215,14 +243,23 @@ final class CommandIntegrationTest extends TestCase
             Yaml::dump([
                 'include' => [],
                 'exclude' => [],
-                'tools' => ['phpstan' => ['include' => [], 'exclude' => []]],
+                'tools' => [
+                    'phpstan' => [
+                        'include' => [],
+                        'exclude' => [],
+                    ],
+                ],
             ], 5),
         ];
 
         foreach ($invalidConfigurations as $configuration) {
             $this->put($root, 'php-qa-scope.yml', $configuration);
             foreach (['check', 'sync'] as $command) {
-                [$code, $stdout, $stderr] = $this->runApp(Application::default(), ['php-qa-scope', $command], $root);
+                [
+                    $code,
+                    $stdout,
+                    $stderr,
+                ] = $this->runApp(Application::default(), ['php-qa-scope', $command], $root);
                 self::assertSame(ExitCode::ERROR, $code);
                 self::assertSame('', $stdout);
                 self::assertStringContainsString('ERROR ', $stderr);
@@ -246,7 +283,11 @@ final class CommandIntegrationTest extends TestCase
 
         unlink($root . '/phpcs.xml');
         symlink($root . '/phpstan.neon', $root . '/phpcs.xml');
-        [$code, $stdout, $stderr] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
+        [
+            $code,
+            $stdout,
+            $stderr,
+        ] = $this->runApp($app, ['php-qa-scope', 'sync'], $root);
         self::assertSame(ExitCode::ERROR, $code);
         self::assertStringContainsString('ERROR phpcs.xml:', $stderr);
         self::assertStringContainsString("OK phpstan.neon\n", $stdout);
@@ -257,9 +298,10 @@ final class CommandIntegrationTest extends TestCase
     /**
      * Runs the application with in-memory output streams.
      *
-     * @param Application $app Application instance to execute.
+     * @param \GustavoPeixoto\PhpQaScope\Application $app Application instance to execute.
      * @param list<string> $argv Command-line arguments including the executable name.
      * @param string $root Project root for the run.
+     *
      * @return array{0: int, 1: string, 2: string} Exit code, stdout, and stderr.
      */
     private function runApp(Application $app, array $argv, string $root): array
@@ -270,6 +312,10 @@ final class CommandIntegrationTest extends TestCase
         rewind($stdout);
         rewind($stderr);
 
-        return [$code, stream_get_contents($stdout), stream_get_contents($stderr)];
+        return [
+            $code,
+            stream_get_contents($stdout),
+            stream_get_contents($stderr),
+        ];
     }
 }

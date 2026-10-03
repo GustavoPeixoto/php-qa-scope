@@ -33,7 +33,7 @@ final class Application
     /**
      * Creates an application with the provided command registry.
      *
-     * @param CommandRegistry $commands Commands available to the CLI.
+     * @param \GustavoPeixoto\PhpQaScope\Command\CommandRegistry $commands Commands available to the CLI.
      */
     public function __construct(private readonly CommandRegistry $commands)
     {
@@ -90,8 +90,9 @@ final class Application
      * Executes the command described by CLI arguments.
      *
      * @param list<string> $argv Command-line arguments including the executable name.
-     * @param Console $console Console receiving command output and caught errors.
+     * @param \GustavoPeixoto\PhpQaScope\Console\Console $console Console receiving command output and caught errors.
      * @param string|null $root Project root used instead of the current working directory.
+     *
      * @return int Process exit code for the command.
      */
     public function run(array $argv, Console $console, ?string $root = null): int

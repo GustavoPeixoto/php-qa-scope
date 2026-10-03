@@ -14,7 +14,7 @@ final readonly class TargetFile
     /**
      * Creates a target file definition.
      *
-     * @param Tool $tool Managed tool name.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Managed tool name.
      * @param string $path Target path relative to the project root.
      * @param string $marker Marker format containing one string placeholder for the edge.
      * @param string $indent Required marker indentation.

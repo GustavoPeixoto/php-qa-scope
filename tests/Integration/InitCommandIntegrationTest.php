@@ -53,7 +53,7 @@ final class InitCommandIntegrationTest extends TestCase
         $registry = TargetRegistry::default();
         foreach ($config->managedTools() as $tool) {
             $target = $registry->get($tool);
-            $contents = (string) file_get_contents($root . '/' . $target->path);
+            $contents = (string)file_get_contents($root . '/' . $target->path);
             $block = (new BlockLocator())->locate($contents, $target);
             self::assertSame(
                 RendererRegistry::default()->get($tool)->render(new ToolScope(['src'], [])),
@@ -62,11 +62,11 @@ final class InitCommandIntegrationTest extends TestCase
             self::assertSame(1, substr_count($contents, 'php-qa-scope:start'));
             self::assertSame(1, substr_count($contents, 'php-qa-scope:end'));
         }
-        self::assertStringContainsString('<rule ref="PSR12"/>', (string) file_get_contents($root . '/phpcs.xml'));
-        self::assertStringContainsString('    level: 6', (string) file_get_contents($root . '/phpstan.neon'));
+        self::assertStringContainsString('<rule ref="PSR12"/>', (string)file_get_contents($root . '/phpcs.xml'));
+        self::assertStringContainsString('    level: 6', (string)file_get_contents($root . '/phpstan.neon'));
         self::assertStringEndsWith(
             substr($original['php-cs-fixer.dist.php'], strlen("<?php\n")),
-            (string) file_get_contents($root . '/php-cs-fixer.dist.php'),
+            (string)file_get_contents($root . '/php-cs-fixer.dist.php'),
         );
         self::assertSame(ExitCode::SUCCESS, $this->runApp(Application::default(), $root, 'check')['code']);
     }
@@ -93,7 +93,8 @@ final class InitCommandIntegrationTest extends TestCase
             /**
              * Checks all empty pairs before delegating to the standard PHPCS renderer.
              *
-             * @param ToolScope $scope Scope passed to synchronization.
+             * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Scope passed to synchronization.
+             *
              * @return string Standard PHPCS managed fragment.
              */
             public function render(ToolScope $scope): string
@@ -102,7 +103,7 @@ final class InitCommandIntegrationTest extends TestCase
                 $targets = TargetRegistry::default();
                 foreach (['phpcs', 'phpstan', 'php-cs-fixer'] as $toolName) {
                     $target = $targets->get(Tool::from($toolName));
-                    $contents = (string) file_get_contents($this->root . '/' . $target->path);
+                    $contents = (string)file_get_contents($this->root . '/' . $target->path);
                     InitCommandIntegrationTest::assertSame(
                         '',
                         (new BlockLocator())->locate($contents, $target)->content,
@@ -155,7 +156,12 @@ final class InitCommandIntegrationTest extends TestCase
         $root = $this->tempRoot();
         $this->fixture($root, [
             'include' => ['app'],
-            'tools' => ['phpstan' => ['include' => ['tests'], 'exclude' => []]],
+            'tools' => [
+                'phpstan' => [
+                    'include' => ['tests'],
+                    'exclude' => [],
+                ],
+            ],
         ]);
         $yaml = file_get_contents($root . '/php-qa-scope.yml');
         $phpcs = file_get_contents($root . '/phpcs.xml');
@@ -168,8 +174,8 @@ final class InitCommandIntegrationTest extends TestCase
         self::assertSame($yaml, file_get_contents($root . '/php-qa-scope.yml'));
         self::assertSame($phpcs, file_get_contents($root . '/phpcs.xml'));
         self::assertSame($fixer, file_get_contents($root . '/php-cs-fixer.dist.php'));
-        self::assertStringContainsString("        - 'app'", (string) file_get_contents($root . '/phpstan.neon'));
-        self::assertStringContainsString("        - 'tests'", (string) file_get_contents($root . '/phpstan.neon'));
+        self::assertStringContainsString("        - 'app'", (string)file_get_contents($root . '/phpstan.neon'));
+        self::assertStringContainsString("        - 'tests'", (string)file_get_contents($root . '/phpstan.neon'));
     }
 
     /**
@@ -237,7 +243,8 @@ final class InitCommandIntegrationTest extends TestCase
             /**
              * Simulates a target-local rendering error after all pairs are persisted.
              *
-             * @param ToolScope $scope Effective scope for the failing target.
+             * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Effective scope for the failing target.
+             *
              * @return string Rendered fragment when rendering succeeds.
              */
             public function render(ToolScope $scope): string
@@ -281,7 +288,7 @@ final class InitCommandIntegrationTest extends TestCase
         self::assertStringContainsString('ERROR phpcs.xml: simulated rendering failure', $result['stderr']);
         self::assertStringEndsWith(InitCommand::REVIEW_WARNING . "\n", $result['stderr']);
         self::assertSame('', (new BlockLocator())->locate(
-            (string) file_get_contents($root . '/phpcs.xml'),
+            (string)file_get_contents($root . '/phpcs.xml'),
             TargetRegistry::default()->get(Tool::Phpcs),
         )->content);
         $inode = fileinode($root . '/phpstan.neon');
@@ -333,13 +340,14 @@ final class InitCommandIntegrationTest extends TestCase
              * Simulates a concurrent native edit after the preparer has read its bytes.
              *
              * @param string $contents Original inspected configuration bytes.
+             *
              * @return int Original insertion boundary.
              */
             public function locate(string $contents): int
             {
                 file_put_contents($this->root . '/phpstan.neon', 'concurrent configuration');
 
-                return (int) strpos($contents, "\n") + 1;
+                return (int)strpos($contents, "\n") + 1;
             }
         };
         $app = new Application(new CommandRegistry([
@@ -382,7 +390,12 @@ final class InitCommandIntegrationTest extends TestCase
             . "Setup instructions: https://github.com/GustavoPeixoto/php-qa-scope#managed-blocks\n";
         self::assertSame($warning, $first['stderr']);
         self::assertStringNotContainsString('WARNING', $first['stdout']);
-        $files = ['php-qa-scope.yml', 'phpcs.xml', 'phpstan.neon', 'php-cs-fixer.dist.php'];
+        $files = [
+            'php-qa-scope.yml',
+            'phpcs.xml',
+            'phpstan.neon',
+            'php-cs-fixer.dist.php',
+        ];
         $inodes = [];
         foreach ($files as $file) {
             $inodes[$file] = fileinode($root . '/' . $file);
@@ -434,7 +447,8 @@ final class InitCommandIntegrationTest extends TestCase
             /**
              * Fails the only target's synchronization after successful preparation.
              *
-             * @param ToolScope $scope Effective scope passed to the renderer.
+             * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Effective scope passed to the renderer.
+             *
              * @return string Fragment produced on a successful render.
              */
             public function render(ToolScope $scope): string
@@ -534,9 +548,11 @@ final class InitCommandIntegrationTest extends TestCase
             $original = $this->rawProject($root);
             $file = $targets->get(Tool::from($toolName))->path;
             foreach (array_keys($original) as $other) {
-                if ($other !== $file) {
-                    unlink($root . '/' . $other);
+                if ($other === $file) {
+                    continue;
                 }
+
+                unlink($root . '/' . $other);
             }
             $result = $this->runApp(Application::default(), $root);
             self::assertSame(ExitCode::SUCCESS, $result['code']);
@@ -547,9 +563,11 @@ final class InitCommandIntegrationTest extends TestCase
             );
             self::assertSame(ExitCode::SUCCESS, $this->runApp(Application::default(), $root, 'check')['code']);
             foreach (array_keys($original) as $other) {
-                if ($other !== $file) {
-                    self::assertFileDoesNotExist($root . '/' . $other);
+                if ($other === $file) {
+                    continue;
                 }
+
+                self::assertFileDoesNotExist($root . '/' . $other);
             }
         }
     }
@@ -600,6 +618,7 @@ final class InitCommandIntegrationTest extends TestCase
      *
      * @param string $root Project root receiving the fixtures.
      * @param string $eol Newline convention used by the native files.
+     *
      * @return array<string, string> Original bytes indexed by native filename.
      */
     private function rawProject(string $root, string $eol = "\n"): array
@@ -620,9 +639,10 @@ final class InitCommandIntegrationTest extends TestCase
     /**
      * Executes a command using memory streams for precise output assertions.
      *
-     * @param Application $app Application with the desired command collaborators.
+     * @param \GustavoPeixoto\PhpQaScope\Application $app Application with the desired command collaborators.
      * @param string $root Consumer project root.
      * @param string $command Command to dispatch.
+     *
      * @return array{code: int, stdout: string, stderr: string} Exit code and both output streams.
      */
     private function runApp(Application $app, string $root, string $command = 'init'): array
@@ -637,6 +657,10 @@ final class InitCommandIntegrationTest extends TestCase
         fclose($stdout);
         fclose($stderr);
 
-        return ['code' => $code, 'stdout' => $out, 'stderr' => $err];
+        return [
+            'code' => $code,
+            'stdout' => $out,
+            'stderr' => $err,
+        ];
     }
 }

@@ -15,7 +15,7 @@ final class PhpCodeSnifferRenderer implements Renderer
     /**
      * Creates the renderer with the pattern compiler used for excludes.
      *
-     * @param PatternCompiler $patternCompiler Compiler for supported exclude patterns.
+     * @param \GustavoPeixoto\PhpQaScope\Glob\PatternCompiler $patternCompiler Compiler for supported exclude patterns.
      */
     public function __construct(private readonly PatternCompiler $patternCompiler)
     {
@@ -34,13 +34,17 @@ final class PhpCodeSnifferRenderer implements Renderer
     /**
      * Renders the managed PHPCS block for a tool scope.
      *
-     * @param ToolScope $scope Scope to render into PHPCS XML.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Scope to render into PHPCS XML.
+     *
      * @return string XML fragment for the managed scope block.
      */
     public function render(ToolScope $scope): string
     {
         $xml = static fn (string $text): string => htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
-        $lines = ['    <file>.</file>', '    <arg name="extensions" value="php"/>'];
+        $lines = [
+            '    <file>.</file>',
+            '    <arg name="extensions" value="php"/>',
+        ];
         $patternCompiler = [
             '(?-i)^(?!' . $this->includeRegex($scope->include) . ').+',
             '(?-i)^(?!' . $this->includeRegex($scope->include, true) . ').+/*',
@@ -78,6 +82,7 @@ final class PhpCodeSnifferRenderer implements Renderer
      *
      * @param list<string> $paths Include paths to convert.
      * @param bool $directories Whether parent directories should be included.
+     *
      * @return string Regular expression fragment for include matching.
      */
     private function includeRegex(array $paths, bool $directories = false): string
@@ -90,12 +95,14 @@ final class PhpCodeSnifferRenderer implements Renderer
                 $alternatives[] = preg_quote($path, '~') . ($isFile ? '$' : '(?:/|$)');
             }
 
-            if ($directories) {
-                $parent = dirname($path);
-                while ($parent !== '.') {
-                    $alternatives[] = preg_quote($parent, '~') . '$';
-                    $parent = dirname($parent);
-                }
+            if (!$directories) {
+                continue;
+            }
+
+            $parent = dirname($path);
+            while ($parent !== '.') {
+                $alternatives[] = preg_quote($parent, '~') . '$';
+                $parent = dirname($parent);
             }
         }
 
@@ -106,6 +113,7 @@ final class PhpCodeSnifferRenderer implements Renderer
      * Builds PHPCS directory exclusions while keeping explicitly included hidden roots traversable.
      *
      * @param list<string> $includes Paths explicitly included for PHPCS.
+     *
      * @return list<string> Exclusion patterns for hidden directories.
      */
     private function hiddenDirectoryPatterns(array $includes): array
@@ -120,9 +128,11 @@ final class PhpCodeSnifferRenderer implements Renderer
             $prefix = '';
             foreach ($segments as $segment) {
                 $prefix = $prefix === '' ? $segment : $prefix . '/' . $segment;
-                if (str_starts_with($segment, '.')) {
-                    $protected[] = $prefix;
+                if (!str_starts_with($segment, '.')) {
+                    continue;
                 }
+
+                $protected[] = $prefix;
             }
         }
 
@@ -150,6 +160,7 @@ final class PhpCodeSnifferRenderer implements Renderer
      * Checks whether a path contains a segment that directory traversal hides.
      *
      * @param string $path Project-relative PHP file path.
+     *
      * @return bool True when a path segment begins with a dot.
      */
     private function hasHiddenSegment(string $path): bool

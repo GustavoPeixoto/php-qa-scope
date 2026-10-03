@@ -51,7 +51,7 @@ final class PhpCsFixerInsertionLocatorTest extends TestCase
                 $inspection->before,
                 $inspection->replacement(),
             );
-            $after = (string) file_get_contents($root . '/php-cs-fixer.dist.php');
+            $after = (string)file_get_contents($root . '/php-cs-fixer.dist.php');
             self::assertStringStartsWith($prefix . $eol, $after);
             self::assertStringEndsWith($suffix, $after);
             self::assertSame(0, $this->process(['php', '-l', $root . '/php-cs-fixer.dist.php'], $root)['code']);
@@ -78,7 +78,7 @@ final class PhpCsFixerInsertionLocatorTest extends TestCase
         self::assertFileDoesNotExist($root . '/side-effect');
         self::assertStringEndsWith(
             substr($before, strlen("<?php\n")),
-            (string) file_get_contents($root . '/php-cs-fixer.dist.php'),
+            (string)file_get_contents($root . '/php-cs-fixer.dist.php'),
         );
     }
 

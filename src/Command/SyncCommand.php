@@ -18,8 +18,8 @@ final class SyncCommand implements Command
     /**
      * Creates the command with scope loading and shared synchronization.
      *
-     * @param TargetInspector $inspector Loader and inspector for managed targets.
-     * @param Synchronizer $synchronizer Workflow for synchronizing managed targets.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetInspector $inspector Loader and inspector for managed targets.
+     * @param \GustavoPeixoto\PhpQaScope\Synchronizer\Synchronizer $synchronizer Workflow for synchronizing managed targets.
      */
     public function __construct(
         private readonly TargetInspector $inspector,
@@ -40,8 +40,9 @@ final class SyncCommand implements Command
     /**
      * Updates each valid divergent target and aggregates any local errors.
      *
-     * @param Input $input Parsed command input.
-     * @param ConsoleWriterInterface $console Destination for per-target statuses.
+     * @param \GustavoPeixoto\PhpQaScope\Cli\Input $input Parsed command input.
+     * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $console Destination for per-target statuses.
+     *
      * @return int Error when any target failed, otherwise success.
      */
     public function execute(Input $input, ConsoleWriterInterface $console): int

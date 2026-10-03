@@ -19,13 +19,46 @@ final class PatternCompilerTest extends TestCase
     public function testCompilesSupportedPatternForms(): void
     {
         $cases = [
-            ['src/A.php', ['src/A.php'], ['src/A.php.bak', 'other/src/A.php']],
-            ['tests/fixtures/**', ['tests/fixtures/A.php', 'tests/fixtures/deep/A.php'], ['tests/fixturesOld/A.php']],
-            ['**/legacy/**', ['legacy/A.php', 'src/legacy/A.php', 'src/deep/legacy/A.php'], ['src/legacyOld/A.php']],
-            ['config/**/legacy/**', ['config/legacy/A.php', 'config/a/b/legacy/A.php'], ['src/config/legacy/A.php']],
+            [
+                'src/A.php',
+                ['src/A.php'],
+                [
+                    'src/A.php.bak',
+                    'other/src/A.php',
+                ],
+            ],
+            [
+                'tests/fixtures/**',
+                [
+                    'tests/fixtures/A.php',
+                    'tests/fixtures/deep/A.php',
+                ],
+                ['tests/fixturesOld/A.php'],
+            ],
+            [
+                '**/legacy/**',
+                [
+                    'legacy/A.php',
+                    'src/legacy/A.php',
+                    'src/deep/legacy/A.php',
+                ],
+                ['src/legacyOld/A.php'],
+            ],
+            [
+                'config/**/legacy/**',
+                [
+                    'config/legacy/A.php',
+                    'config/a/b/legacy/A.php',
+                ],
+                ['src/config/legacy/A.php'],
+            ],
             [
                 '**/*Generated.php',
-                ['Generated.php', 'src/A Generated.php', 'src/a/BGenerated.php'],
+                [
+                    'Generated.php',
+                    'src/A Generated.php',
+                    'src/a/BGenerated.php',
+                ],
                 ['src/Generated.php.bak'],
             ],
         ];

@@ -15,7 +15,8 @@ final class PatternCompiler
      * Converts a supported pattern into renderer-ready fragments.
      *
      * @param string $pattern Exclude pattern from configuration.
-     * @return CompiledPattern Pattern compiled for all supported renderers.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Glob\CompiledPattern Pattern compiled for all supported renderers.
      */
     public function compile(string $pattern): CompiledPattern
     {
@@ -37,7 +38,10 @@ final class PatternCompiler
 
             return new CompiledPattern(
                 preg_quote($prefix, '~') . '(?:[^/]+/){0,}' . $quote($name) . '/',
-                [$prefix . $name . '/*', $prefix . '*/' . $name . '/*'],
+                [
+                    $prefix . $name . '/*',
+                    $prefix . '*/' . $name . '/*',
+                ],
             );
         }
 
@@ -59,6 +63,7 @@ final class PatternCompiler
      *
      * @param string $pattern Exclude pattern to evaluate.
      * @param string $path Literal path to test.
+     *
      * @return bool True when the pattern matches the path.
      */
     public function matchesPath(string $pattern, string $path): bool

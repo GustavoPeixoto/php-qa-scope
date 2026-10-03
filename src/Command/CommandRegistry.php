@@ -11,13 +11,13 @@ use RuntimeException;
  */
 final class CommandRegistry
 {
-    /** @var array<string, Command> Commands indexed by CLI name. */
+    /** @var array<string, \GustavoPeixoto\PhpQaScope\Command\Command> Commands indexed by CLI name. */
     private readonly array $commands;
 
     /**
      * Registers the commands that may be dispatched.
      *
-     * @param list<Command> $commands Command instances to index by name.
+     * @param list<\GustavoPeixoto\PhpQaScope\Command\Command> $commands Command instances to index by name.
      */
     public function __construct(array $commands)
     {
@@ -42,7 +42,8 @@ final class CommandRegistry
      * Returns the command registered for a name.
      *
      * @param string $name Command name requested by the input.
-     * @return Command Command implementation for the requested name.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Command\Command Command implementation for the requested name.
      */
     public function get(string $name): Command
     {

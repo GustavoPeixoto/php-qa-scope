@@ -16,6 +16,7 @@ final class TargetWriter
      *
      * @param string $root Project root containing the file.
      * @param string $file Root-relative native configuration filename.
+     *
      * @return string Observed native file bytes.
      */
     public function read(string $root, string $file): string

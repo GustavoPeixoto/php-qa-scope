@@ -20,11 +20,11 @@ final class TargetInspector
     /**
      * Creates an inspector with the supplied scope and native-target collaborators.
      *
-     * @param ScopeLoader $loader Loader for project scope configuration.
-     * @param ScopeCalculator $scopeCalculator Calculator for managed tool scopes.
-     * @param RendererRegistry $renderers Registry of native renderers.
-     * @param TargetRegistry $targets Registry of native target files.
-     * @param BlockLocator $blockLocator Locator for managed marker blocks.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ScopeLoader $loader Loader for project scope configuration.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator $scopeCalculator Calculator for managed tool scopes.
+     * @param \GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry $renderers Registry of native renderers.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetRegistry $targets Registry of native target files.
+     * @param \GustavoPeixoto\PhpQaScope\Block\BlockLocator $blockLocator Locator for managed marker blocks.
      */
     public function __construct(
         private readonly ScopeLoader $loader,
@@ -55,7 +55,8 @@ final class TargetInspector
      * Validates configuration and calculates all managed scopes before file access.
      *
      * @param string $root Project root containing php-qa-scope.yml.
-     * @return array<string, ToolScope> Effective scopes indexed by managed tool.
+     *
+     * @return array<string, \GustavoPeixoto\PhpQaScope\Scope\ToolScope> Effective scopes indexed by managed tool.
      */
     public function scopes(string $root): array
     {
@@ -65,8 +66,9 @@ final class TargetInspector
     /**
      * Resolves the native file associated with a managed tool.
      *
-     * @param Tool $tool Managed tool name.
-     * @return TargetFile Native configuration target.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Managed tool name.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Target\TargetFile Native configuration target.
      */
     public function target(Tool $tool): TargetFile
     {
@@ -77,9 +79,10 @@ final class TargetInspector
      * Validates and compares a single native target without preparing replacement text.
      *
      * @param string $root Project root containing native QA configuration files.
-     * @param Tool $tool Managed tool name.
-     * @param ToolScope $scope Effective scope for the tool.
-     * @return TargetInspection Current target content and comparison result.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Managed tool name.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Effective scope for the tool.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Target\TargetInspection Current target content and comparison result.
      */
     public function inspect(string $root, Tool $tool, ToolScope $scope): TargetInspection
     {

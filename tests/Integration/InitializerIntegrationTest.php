@@ -81,7 +81,8 @@ final class InitializerIntegrationTest extends TestCase
             /**
              * Simulates a rendering failure after marker insertion has succeeded.
              *
-             * @param ToolScope $scope Effective scope provided by the synchronizer.
+             * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Effective scope provided by the synchronizer.
+             *
              * @return string Fragment produced by a successful renderer.
              */
             public function render(ToolScope $scope): string

@@ -21,15 +21,21 @@ final class TargetRegistryTest extends TestCase
     public function testDiscoversEveryToolCombination(): void
     {
         $registry = TargetRegistry::default();
-        $tools = ['phpcs', 'phpstan', 'php-cs-fixer'];
+        $tools = [
+            'phpcs',
+            'phpstan',
+            'php-cs-fixer',
+        ];
         for ($mask = 1; $mask < 8; ++$mask) {
             $root = $this->tempRoot();
             $expected = [];
             foreach ($tools as $index => $tool) {
-                if (($mask & (1 << $index)) !== 0) {
-                    $this->put($root, $registry->get(Tool::from($tool))->path, 'configuration');
-                    $expected[] = $tool;
+                if (!(($mask & (1 << $index)) !== 0)) {
+                    continue;
                 }
+
+                $this->put($root, $registry->get(Tool::from($tool))->path, 'configuration');
+                $expected[] = $tool;
             }
 
             self::assertSame($expected, array_keys($registry->discover($root)));
@@ -60,6 +66,7 @@ final class TargetRegistryTest extends TestCase
         $this->expectException(RuntimeException::class);
         TargetRegistry::default()->discover($this->tempRoot());
     }
+
     /**
      * Discovers the caller's supplied path rather than replacing it with a built-in target.
      */

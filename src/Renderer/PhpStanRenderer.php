@@ -15,7 +15,7 @@ final class PhpStanRenderer implements Renderer
     /**
      * Creates the renderer with the pattern compiler used for excludes.
      *
-     * @param PatternCompiler $patternCompiler Compiler for supported exclude patterns.
+     * @param \GustavoPeixoto\PhpQaScope\Glob\PatternCompiler $patternCompiler Compiler for supported exclude patterns.
      */
     public function __construct(private readonly PatternCompiler $patternCompiler)
     {
@@ -34,7 +34,8 @@ final class PhpStanRenderer implements Renderer
     /**
      * Renders the managed PHPStan block for a tool scope.
      *
-     * @param ToolScope $scope Scope to render into PHPStan NEON.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Scope to render into PHPStan NEON.
+     *
      * @return string NEON fragment for the managed scope block.
      */
     public function render(ToolScope $scope): string

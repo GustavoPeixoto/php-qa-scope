@@ -27,12 +27,12 @@ final class Initializer
     /**
      * Creates the initialization workflow with shared synchronization.
      *
-     * @param Synchronizer $synchronizer Existing managed-block synchronization workflow.
-     * @param TargetInitializer $targetInitializer Validation or persisted insertion of empty marker pairs.
-     * @param ScopeInitializer $scopeInitializer Generator and create-only writer for absent YAML.
-     * @param TargetRegistry $targets Registry used for target error filenames.
-     * @param ScopeLoader $loader Validator for existing and generated scope YAML.
-     * @param ScopeCalculator $scopeCalculator Calculator for each listed tool's scope.
+     * @param \GustavoPeixoto\PhpQaScope\Synchronizer\Synchronizer $synchronizer Existing managed-block synchronization workflow.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetInitializer $targetInitializer Validation or persisted insertion of empty marker pairs.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ScopeInitializer $scopeInitializer Generator and create-only writer for absent YAML.
+     * @param \GustavoPeixoto\PhpQaScope\Target\TargetRegistry $targets Registry used for target error filenames.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ScopeLoader $loader Validator for existing and generated scope YAML.
+     * @param \GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator $scopeCalculator Calculator for each listed tool's scope.
      */
     public function __construct(
         private readonly Synchronizer $synchronizer,
@@ -78,8 +78,9 @@ final class Initializer
      * Inserts empty marker pairs before synchronizing eligible targets.
      *
      * @param string $root Project root containing scope and native configuration files.
-     * @param ConsoleWriterInterface $console Destination for per-target statuses and errors.
-     * @return InitializerResult Aggregate errors and successful native writes from both phases.
+     * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $console Destination for per-target statuses and errors.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Initializer\InitializerResult Aggregate errors and successful native writes from both phases.
      */
     public function initialize(string $root, ConsoleWriterInterface $console): InitializerResult
     {

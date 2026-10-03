@@ -35,6 +35,7 @@ abstract class TestCase extends PhpUnitTestCase
      * Creates a unique temporary project root.
      *
      * @param string $name Name segment used to identify the temporary root.
+     *
      * @return string Path to the created temporary root.
      */
     protected function tempRoot(string $name = 'project'): string
@@ -55,12 +56,24 @@ abstract class TestCase extends PhpUnitTestCase
     protected function fixture(string $root, array $scope): void
     {
         $scope += [
-            'include' => ['src', 'tests'],
+            'include' => [
+                'src',
+                'tests',
+            ],
             'exclude' => [],
             'tools' => [
-                'phpstan' => ['include' => [], 'exclude' => []],
-                'phpcs' => ['include' => [], 'exclude' => []],
-                'php-cs-fixer' => ['include' => [], 'exclude' => []],
+                'phpstan' => [
+                    'include' => [],
+                    'exclude' => [],
+                ],
+                'phpcs' => [
+                    'include' => [],
+                    'exclude' => [],
+                ],
+                'php-cs-fixer' => [
+                    'include' => [],
+                    'exclude' => [],
+                ],
             ],
         ];
 
@@ -115,6 +128,7 @@ PHP);
      *
      * @param list<string> $arguments Process command and arguments.
      * @param string $cwd Working directory for the process.
+     *
      * @return array{code: int, stdout: string, stderr: string} Captured process result.
      */
     protected function process(array $arguments, string $cwd): array
@@ -127,7 +141,11 @@ PHP);
         fclose($pipes[1]);
         fclose($pipes[2]);
 
-        return ['code' => proc_close($process), 'stdout' => $stdout, 'stderr' => $stderr];
+        return [
+            'code' => proc_close($process),
+            'stdout' => $stdout,
+            'stderr' => $stderr,
+        ];
     }
 
     /**

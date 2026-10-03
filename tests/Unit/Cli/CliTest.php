@@ -54,7 +54,10 @@ final class CliTest extends TestCase
         $stderr = fopen('php://memory', 'w+');
 
         $code = $app->run(
-            ['php-qa-scope', 'invalid'],
+            [
+                'php-qa-scope',
+                'invalid',
+            ],
             new Console(new ConsoleWriter(null, $stderr)),
             $this->tempRoot(),
         );
@@ -101,6 +104,7 @@ final class CliTest extends TestCase
         self::assertSame("UPDATED phpstan.neon\n", $result['stdout']);
         self::assertFileExists($root . '/php-qa-scope.yml');
     }
+
     /**
      * Normalizes missing names and retains unknown names for registry validation.
      */
@@ -129,7 +133,19 @@ final class CliTest extends TestCase
             $commands[] = $command;
         }
         $app = new Application(new CommandRegistry($commands));
-        $arguments = [[], ['php-qa-scope'], ['php-qa-scope', 'unknown'], ['php-qa-scope', 'sync', 'extra']];
+        $arguments = [
+            [],
+            ['php-qa-scope'],
+            [
+                'php-qa-scope',
+                'unknown',
+            ],
+            [
+                'php-qa-scope',
+                'sync',
+                'extra',
+            ],
+        ];
         foreach ($arguments as $argv) {
             $stderr = fopen('php://memory', 'w+');
             self::assertSame(ExitCode::ERROR, $app->run($argv, new Console(new ConsoleWriter(null, $stderr)), '/repo'));

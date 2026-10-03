@@ -15,6 +15,7 @@ final class PhpCodeSnifferInsertionLocator implements InsertionLocator
      * Finds the end of the first recognizable non-self-closing ruleset opening tag.
      *
      * @param string $contents Original XML configuration bytes.
+     *
      * @return int Offset immediately after the ruleset opening element.
      */
     public function locate(string $contents): int

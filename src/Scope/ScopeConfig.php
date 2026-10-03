@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GustavoPeixoto\PhpQaScope\Scope;
 
 use GustavoPeixoto\PhpQaScope\Tool;
+use RuntimeException;
 
 /**
  * Holds the loaded php-qa-scope configuration.
@@ -16,7 +17,7 @@ final readonly class ScopeConfig
      *
      * @param list<string> $include Global include paths.
      * @param list<string> $exclude Global exclude patterns.
-     * @param array<string, ToolScope> $tools Tool-specific scope configuration indexed by tool name.
+     * @param array<string, \GustavoPeixoto\PhpQaScope\Scope\ToolScope> $tools Tool-specific scope configuration indexed by tool name.
      */
     public function __construct(
         public array $include,
@@ -24,8 +25,8 @@ final readonly class ScopeConfig
         public array $tools,
     ) {
         foreach (array_keys($tools) as $tool) {
-            if (Tool::tryFrom((string) $tool) === null) {
-                throw new \RuntimeException("tools: unknown key '$tool'.");
+            if (Tool::tryFrom((string)$tool) === null) {
+                throw new RuntimeException("tools: unknown key '$tool'.");
             }
         }
     }
@@ -33,7 +34,7 @@ final readonly class ScopeConfig
     /**
      * Returns the tools explicitly managed by the configuration.
      *
-     * @return list<Tool> Managed tool identities.
+     * @return list<\GustavoPeixoto\PhpQaScope\Tool> Managed tool identities.
      */
     public function managedTools(): array
     {
@@ -48,12 +49,13 @@ final readonly class ScopeConfig
     /**
      * Returns the scope configured for one managed tool.
      *
-     * @param Tool $tool Tool name to resolve.
-     * @return ToolScope Scope configured for the requested tool.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Tool name to resolve.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Scope\ToolScope Scope configured for the requested tool.
      */
     public function tool(Tool $tool): ToolScope
     {
-        return $this->tools[$tool->value] ?? throw new \RuntimeException(
+        return $this->tools[$tool->value] ?? throw new RuntimeException(
             sprintf("Tool '%s' is not managed.", $tool->value),
         );
     }

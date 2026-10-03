@@ -29,7 +29,7 @@ final class TargetInspectorTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, []);
-        $before = (string) file_get_contents($root . '/phpcs.xml');
+        $before = (string)file_get_contents($root . '/phpcs.xml');
         $inspector = TargetInspector::default();
 
         $inspection = $inspector->inspect($root, Tool::Phpcs, $inspector->scopes($root)['phpcs']);
@@ -64,7 +64,12 @@ final class TargetInspectorTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, [
-            'tools' => ['phpstan' => ['include' => [], 'exclude' => []]],
+            'tools' => [
+                'phpstan' => [
+                    'include' => [],
+                    'exclude' => [],
+                ],
+            ],
         ]);
         unlink($root . '/phpcs.xml');
         unlink($root . '/php-cs-fixer.dist.php');
@@ -98,7 +103,12 @@ final class TargetInspectorTest extends TestCase
         $this->put($root, 'php-qa-scope.yml', Yaml::dump([
             'include' => ['src'],
             'exclude' => [],
-            'tools' => ['phpstan' => ['include' => [], 'exclude' => ['src/*.php']]],
+            'tools' => [
+                'phpstan' => [
+                    'include' => [],
+                    'exclude' => ['src/*.php'],
+                ],
+            ],
         ], 5));
 
         $this->expectException(RuntimeException::class);
@@ -116,7 +126,8 @@ final class TargetInspectorTest extends TestCase
             /**
              * Rejects one target to exercise local rendering failure.
              *
-             * @param ToolScope $scope Scope supplied for the target.
+             * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Scope supplied for the target.
+             *
              * @return string Rendered block, when available.
              */
             public function render(ToolScope $scope): string

@@ -22,8 +22,9 @@ interface Command
     /**
      * Runs the command with parsed input and an output writer.
      *
-     * @param Input $input Parsed command input.
-     * @param ConsoleWriterInterface $console Destination for user-visible messages.
+     * @param \GustavoPeixoto\PhpQaScope\Cli\Input $input Parsed command input.
+     * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $console Destination for user-visible messages.
+     *
      * @return int Process exit code for the command.
      */
     public function execute(Input $input, ConsoleWriterInterface $console): int;

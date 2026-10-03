@@ -15,7 +15,7 @@ final class InsertionLocatorRegistry
     /**
      * Creates a registry with the provided insertion strategies.
      *
-     * @param array<string, InsertionLocator> $locators Insertion strategies indexed by tool name.
+     * @param array<string, \GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocator> $locators Insertion strategies indexed by tool name.
      */
     public function __construct(private readonly array $locators)
     {
@@ -38,8 +38,9 @@ final class InsertionLocatorRegistry
     /**
      * Returns the insertion strategy registered for a tool.
      *
-     * @param Tool $tool Tool name to resolve.
-     * @return InsertionLocator Insertion strategy for the requested tool.
+     * @param \GustavoPeixoto\PhpQaScope\Tool $tool Tool name to resolve.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocator Insertion strategy for the requested tool.
      */
     public function get(Tool $tool): InsertionLocator
     {

@@ -16,6 +16,7 @@ final class PhpCsFixerInsertionLocator implements InsertionLocator
      * Locates an insertion point after the opening tag and leading declarations.
      *
      * @param string $contents Original PHP configuration bytes.
+     *
      * @return int Offset before existing executable configuration code.
      */
     public function locate(string $contents): int
@@ -76,6 +77,7 @@ final class PhpCsFixerInsertionLocator implements InsertionLocator
      * Recognizes whitespace and comments that do not execute configuration code.
      *
      * @param array{0: int, 1: string, 2: int}|string $token Token from PHP's lexer.
+     *
      * @return bool Whether this token belongs to preamble trivia.
      */
     private function isTrivia(array|string $token): bool
@@ -88,6 +90,7 @@ final class PhpCsFixerInsertionLocator implements InsertionLocator
      *
      * @param list<array{0: int, 1: string, 2: int}|string> $tokens Tokens from the parsed PHP file.
      * @param int $start Index of the declaration keyword.
+     *
      * @return int Index of the declaration's terminating semicolon.
      */
     private function declarationEnd(array $tokens, int $start): int

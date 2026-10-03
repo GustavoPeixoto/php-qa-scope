@@ -21,7 +21,7 @@ final class InitCommand implements Command
     /**
      * Creates the CLI adapter for the initialization workflow.
      *
-     * @param Initializer $initializer Workflow that sets up and synchronizes native files.
+     * @param \GustavoPeixoto\PhpQaScope\Initializer\Initializer $initializer Workflow that sets up and synchronizes native files.
      */
     public function __construct(private readonly Initializer $initializer)
     {
@@ -40,8 +40,9 @@ final class InitCommand implements Command
     /**
      * Runs initialization, emits review guidance, and maps the result to an exit code.
      *
-     * @param Input $input Parsed command name and project root.
-     * @param ConsoleWriterInterface $console Destination for results, local errors, and review guidance.
+     * @param \GustavoPeixoto\PhpQaScope\Cli\Input $input Parsed command name and project root.
+     * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $console Destination for results, local errors, and review guidance.
+     *
      * @return int Success unless preparation or synchronization encountered an error.
      */
     public function execute(Input $input, ConsoleWriterInterface $console): int

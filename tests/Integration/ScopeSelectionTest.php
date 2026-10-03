@@ -18,17 +18,36 @@ final class ScopeSelectionTest extends TestCase
     {
         $root = $this->tempRoot('selection');
         $this->fixture($root, [
-            'include' => ['src', 'tests', 'src/.hidden.php', 'src/.chosen'],
+            'include' => [
+                'src',
+                'tests',
+                'src/.hidden.php',
+                'src/.chosen',
+            ],
             'exclude' => ['src/Foo/**'],
         ]);
         $this->writePhpFiles($root);
 
-        $expected = ['src/.chosen/Visible.php', 'src/.hidden.php', 'src/Visible.php', 'tests/Foo/Visible.php'];
+        $expected = [
+            'src/.chosen/Visible.php',
+            'src/.hidden.php',
+            'src/Visible.php',
+            'tests/Foo/Visible.php',
+        ];
         $this->assertNativeSelections($root, $expected);
 
         $this->fixture($root, [
-            'include' => ['src', 'tests', 'src/.hidden.php', 'src/.chosen'],
-            'exclude' => ['src/Foo/**', 'src/.chosen/**', 'src/.hidden.php'],
+            'include' => [
+                'src',
+                'tests',
+                'src/.hidden.php',
+                'src/.chosen',
+            ],
+            'exclude' => [
+                'src/Foo/**',
+                'src/.chosen/**',
+                'src/.hidden.php',
+            ],
         ]);
         $this->assertNativeSelections($root, ['src/Visible.php', 'tests/Foo/Visible.php']);
     }

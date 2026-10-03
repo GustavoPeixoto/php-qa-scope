@@ -15,6 +15,7 @@ final class PhpStanInsertionLocator implements InsertionLocator
      * Locates the start of a parameters body with compatible indentation.
      *
      * @param string $contents Original NEON configuration bytes.
+     *
      * @return int Offset immediately after the parameters header line.
      */
     public function locate(string $contents): int

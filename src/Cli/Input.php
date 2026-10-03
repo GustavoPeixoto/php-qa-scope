@@ -29,6 +29,7 @@ final readonly class Input
      * @param list<string> $argv Command-line arguments including the executable name.
      * @param string $usage Registry-derived usage text for extra-argument errors.
      * @param string|null $root Project root override, or null to use the current working directory.
+     *
      * @return self Parsed input ready for command dispatch.
      */
     public static function fromArgv(array $argv, string $usage, ?string $root = null): self

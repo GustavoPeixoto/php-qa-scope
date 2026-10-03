@@ -15,6 +15,7 @@ final class PathValidator
      * Validates a literal repository-relative path.
      *
      * @param string $path Path to validate.
+     *
      * @return string The validated path.
      */
     public static function literal(string $path): string

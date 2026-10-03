@@ -84,6 +84,7 @@ final class CompositionTest extends TestCase
      *
      * @param object $owner Object holding the collaborator.
      * @param string $name Collaborator property to inspect.
+     *
      * @return object Collaborator supplied to the owner.
      */
     private function collaborator(object $owner, string $name): object
@@ -97,9 +98,10 @@ final class CompositionTest extends TestCase
     /**
      * Resolves a command from an application's supplied command graph.
      *
-     * @param Application $app Application whose graph is inspected.
+     * @param \GustavoPeixoto\PhpQaScope\Application $app Application whose graph is inspected.
      * @param string $name Registered command name.
-     * @return Command Supplied command instance.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Command\Command Supplied command instance.
      */
     private function command(Application $app, string $name): Command
     {
@@ -126,7 +128,8 @@ final class CompositionTest extends TestCase
      * Creates a custom command with a recognizable execution result.
      *
      * @param int $code Exit code returned by the supplied command.
-     * @return Command Command used to check registry isolation.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Command\Command Command used to check registry isolation.
      */
     private function customCommand(int $code): Command
     {
@@ -153,8 +156,9 @@ final class CompositionTest extends TestCase
             /**
              * Returns this command's supplied result without filesystem access.
              *
-             * @param Input $input Parsed input supplied by the application.
-             * @param ConsoleWriterInterface $console Console destination supplied by the application.
+             * @param \GustavoPeixoto\PhpQaScope\Cli\Input $input Parsed input supplied by the application.
+             * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $console Console destination supplied by the application.
+             *
              * @return int Recognizable execution result.
              */
             public function execute(Input $input, ConsoleWriterInterface $console): int

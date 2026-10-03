@@ -12,7 +12,7 @@ final class Console implements ConsoleWriterInterface
     /**
      * Creates a console that delegates output to the supplied writer.
      *
-     * @param ConsoleWriterInterface $writer Destination for normal and error messages.
+     * @param \GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface $writer Destination for normal and error messages.
      */
     public function __construct(private readonly ConsoleWriterInterface $writer)
     {

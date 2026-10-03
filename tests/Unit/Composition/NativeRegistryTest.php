@@ -43,7 +43,8 @@ final class NativeRegistryTest extends TestCase
             /**
              * Returns recognizable output for the supplied renderer contract.
              *
-             * @param ToolScope $scope Scope supplied by the caller.
+             * @param \GustavoPeixoto\PhpQaScope\Scope\ToolScope $scope Scope supplied by the caller.
+             *
              * @return string Custom rendered block.
              */
             public function render(ToolScope $scope): string
@@ -70,6 +71,7 @@ final class NativeRegistryTest extends TestCase
              * Uses the supplied content length as the custom insertion offset.
              *
              * @param string $contents Content inspected by the custom locator.
+             *
              * @return int Custom insertion offset.
              */
             public function locate(string $contents): int
