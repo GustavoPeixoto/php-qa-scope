@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
+namespace GustavoPeixoto\PhpQaScope\Tests\Unit\Glob;
 
 use GustavoPeixoto\PhpQaScope\Glob\PatternCompiler;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;

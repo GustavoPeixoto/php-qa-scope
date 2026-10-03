@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
+namespace GustavoPeixoto\PhpQaScope\Tests\Unit\Console;
 
 use GustavoPeixoto\PhpQaScope\Application;
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
@@ -164,7 +164,7 @@ final class ConsoleTest extends TestCase
     public function testExecutableReportsMissingAutoload(): void
     {
         $root = $this->tempRoot();
-        $script = file_get_contents(dirname(__DIR__, 2) . '/bin/php-qa-scope');
+        $script = file_get_contents(dirname(__DIR__, 3) . '/bin/php-qa-scope');
         self::assertIsString($script);
         $path = 'isolated/package/bin/php-qa-scope';
         $this->put($root, $path, $script);

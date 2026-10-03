@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
+namespace GustavoPeixoto\PhpQaScope\Tests\Unit\Renderer;
 
 use GustavoPeixoto\PhpQaScope\Renderer\PhpCodeSnifferRenderer;
 use GustavoPeixoto\PhpQaScope\Renderer\PhpCsFixerRenderer;

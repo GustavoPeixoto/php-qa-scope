@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
+namespace GustavoPeixoto\PhpQaScope\Tests\Unit\InsertionLocator;
 
 use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;

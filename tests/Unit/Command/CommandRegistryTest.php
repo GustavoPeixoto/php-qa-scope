@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
+namespace GustavoPeixoto\PhpQaScope\Tests\Unit\Command;
 
 use GustavoPeixoto\PhpQaScope\Command\Command;
 use GustavoPeixoto\PhpQaScope\Command\CommandRegistry;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
+namespace GustavoPeixoto\PhpQaScope\Tests\Unit\Scope;
 
 use GustavoPeixoto\PhpQaScope\Scope\ScopeConfig;
 use GustavoPeixoto\PhpQaScope\Scope\ToolScope;

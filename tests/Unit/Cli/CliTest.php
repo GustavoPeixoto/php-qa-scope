@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
+namespace GustavoPeixoto\PhpQaScope\Tests\Unit\Cli;
 
 use GustavoPeixoto\PhpQaScope\Application;
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
@@ -95,7 +95,7 @@ final class CliTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->put($root, 'phpstan.neon', "parameters:\n    level: 6\n");
-        $result = $this->process(['php', dirname(__DIR__, 2) . '/bin/php-qa-scope', 'init'], $root);
+        $result = $this->process(['php', dirname(__DIR__, 3) . '/bin/php-qa-scope', 'init'], $root);
 
         self::assertSame(ExitCode::SUCCESS, $result['code']);
         self::assertSame("UPDATED phpstan.neon\n", $result['stdout']);
