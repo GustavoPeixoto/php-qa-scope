@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+codex_home="${CODEX_HOME:-/home/dev/.codex}"
+headroom_python="${HEADROOM_PYTHON:-/opt/headroom/bin/python}"
+
+"$headroom_python" - "$codex_home" "$@" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+import tomlkit
+from headroom.providers.codex.threads import retag_thread_providers
+
+config_dir = Path(sys.argv[1])
+args = sys.argv[2:]
+if args not in ([], ["--disable"]):
+    raise SystemExit("Usage: setup-codex-headroom [--disable]")
+
+config_path = config_dir / "config.toml"
+backup_path = config_dir / "config.toml.before-headroom"
+original = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+config = tomlkit.parse(original)
+
+if args == ["--disable"]:
+    if not backup_path.exists():
+        raise SystemExit("Headroom has no saved configuration to restore.")
+    baseline = tomlkit.parse(backup_path.read_text(encoding="utf-8"))
+    for key in ("model_provider", "openai_base_url"):
+        config.pop(key, None)
+        if key in baseline:
+            config[key] = baseline[key]
+    for parent, key in (("model_providers", "headroom"), ("mcp_servers", "headroom")):
+        if parent in config:
+            config[parent].pop(key, None)
+        if key in baseline.get(parent, {}):
+            if parent not in config:
+                config[parent] = tomlkit.table()
+            config[parent][key] = baseline[parent][key]
+    previous_provider = str(baseline.get("model_provider", "openai"))
+else:
+    config["model_provider"] = "headroom"
+    config["openai_base_url"] = "http://127.0.0.1:8787/v1"
+    provider = tomlkit.table()
+    provider["name"] = "Headroom local proxy"
+    provider["base_url"] = "http://127.0.0.1:8787/v1"
+    provider["wire_api"] = "responses"
+    provider["requires_openai_auth"] = True
+    provider["supports_websockets"] = True
+    if "model_providers" not in config:
+        config["model_providers"] = tomlkit.table()
+    existing_provider = config["model_providers"].get("headroom")
+    if existing_provider is None or existing_provider.unwrap() != provider.unwrap():
+        config["model_providers"]["headroom"] = provider
+
+    server = tomlkit.table()
+    server["command"] = "/usr/local/bin/headroom"
+    server["args"] = ["mcp", "serve", "--proxy-url", "http://127.0.0.1:8787"]
+    server["env"] = {"HEADROOM_BEACON": os.environ.get("HEADROOM_BEACON") or "off"}
+    if "mcp_servers" not in config:
+        config["mcp_servers"] = tomlkit.table()
+    existing_server = config["mcp_servers"].get("headroom")
+    if existing_server is None or existing_server.unwrap() != server.unwrap():
+        config["mcp_servers"]["headroom"] = server
+
+updated = tomlkit.dumps(config)
+# Validate before writing to the persistent Codex volume.
+tomlkit.parse(updated)
+config_dir.mkdir(parents=True, exist_ok=True)
+if args == [] and not backup_path.exists():
+    backup_path.write_text(original, encoding="utf-8")
+    backup_path.chmod(0o600)
+if updated != original:
+    config_path.write_text(updated, encoding="utf-8")
+    config_path.chmod(0o600)
+
+if args == ["--disable"]:
+    retag_thread_providers(config_dir, frm="headroom", to=previous_provider)
+    backup_path.unlink()
+    print("Headroom routing disabled; reload the Codex extension.")
+else:
+    baseline = tomlkit.parse(backup_path.read_text(encoding="utf-8"))
+    retag_thread_providers(
+        config_dir, frm=str(baseline.get("model_provider", "openai")), to="headroom"
+    )
+    print(f"Headroom Codex setup complete: {config_path}")
+PY

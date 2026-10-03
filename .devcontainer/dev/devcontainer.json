@@ -84,6 +84,7 @@
         "js/ts.format.enabled": false,
         "php.validate.enable": false,
         "php.suggest.basic": false,
+        "remote.autoForwardPorts": false,
         "todo-tree.ripgrep.ripgrep": "/usr/bin/rg"
       }
     }
@@ -92,5 +93,7 @@
   "mounts": [
     "source=codex,target=/home/dev/.codex,type=volume"
   ],
-  "postCreateCommand": "sudo chown -R dev:dev /home/dev/.codex && setup-codex-context-mode"
+  "postCreateCommand": "sudo chown -R dev:dev /home/dev/.codex && setup-codex-context-mode && setup-codex-headroom",
+  "postStartCommand": "start-headroom-proxy",
+  "waitFor": "postStartCommand"
 }

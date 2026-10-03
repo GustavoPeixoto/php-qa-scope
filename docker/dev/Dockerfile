@@ -23,6 +23,7 @@ RUN apt-get update \
         ripgrep \
         tar \
         unzip \
+        util-linux \
         xz-utils \
         zip \
     && rm -rf /var/lib/apt/lists/*
@@ -38,10 +39,6 @@ RUN mkdir -p /etc/sudoers.d \
 
 RUN corepack enable
 
-COPY docker/dev/bin/ /usr/local/bin/
-COPY docker/dev/.codex/ /usr/local/.codex/
-RUN chmod +x /usr/local/bin/codex /usr/local/bin/setup-codex-context-mode
-
 RUN git config --system --add safe.directory ${WORKSPACE_DIR}
 
 RUN yarn global add @fission-ai/openspec@1.14.0 \
@@ -49,5 +46,20 @@ RUN yarn global add @fission-ai/openspec@1.14.0 \
     && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
 
 RUN yarn global add context-mode@1.0.169
+
+RUN python3 -m venv /opt/headroom \
+    && /opt/headroom/bin/pip install --no-cache-dir --only-binary=headroom-ai 'headroom-ai[proxy]==0.39.1' \
+    && ln -s /opt/headroom/bin/headroom /usr/local/bin/headroom
+
+ENV HEADROOM_SAVINGS_PROFILE=coding \
+    HEADROOM_BEACON=off
+
+COPY docker/dev/bin/ /usr/local/bin/
+COPY docker/dev/.codex/ /usr/local/.codex/
+RUN chmod +x \
+    /usr/local/bin/codex \
+    /usr/local/bin/setup-codex-context-mode \
+    /usr/local/bin/setup-codex-headroom \
+    /usr/local/bin/start-headroom-proxy
 
 USER ${USERNAME}
