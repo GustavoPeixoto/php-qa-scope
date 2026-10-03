@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GustavoPeixoto\PhpQaScope\Scope;
 
 use GustavoPeixoto\PhpQaScope\Glob\PathValidator;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -36,10 +37,11 @@ final class ScopeLoader
         }
 
         $globalExclude = $this->stringList($data['exclude'], 'exclude', false);
-        $this->validateMap($data['tools'], ScopeConfig::TOOLS, 'tools');
+        $this->validateMap($data['tools'], array_column(Tool::cases(), 'value'), 'tools');
 
         $tools = [];
         foreach ($data['tools'] as $tool => $local) {
+            $identity = Tool::tryFrom($tool) ?? throw new RuntimeException("tools: unknown key '$tool'.");
             $this->validateMap($local, ['include', 'exclude'], "tools.$tool");
             foreach (['include', 'exclude'] as $required) {
                 if (!array_key_exists($required, $local)) {
@@ -47,7 +49,7 @@ final class ScopeLoader
                 }
             }
 
-            $tools[$tool] = new ToolScope(
+            $tools[$identity->value] = new ToolScope(
                 $this->stringList($local['include'], "tools.$tool.include"),
                 $this->stringList($local['exclude'], "tools.$tool.exclude", false),
             );

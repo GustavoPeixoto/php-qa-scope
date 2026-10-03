@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Renderer;
 
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Glob\PatternCompiler;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 
 /**
  * Renders managed PHPCS scope XML entries.
@@ -15,10 +15,20 @@ final class PhpCodeSnifferRenderer implements Renderer
     /**
      * Creates the renderer with the pattern compiler used for excludes.
      *
-     * @param PatternCompiler $patterns Compiler for supported exclude patterns.
+     * @param PatternCompiler $patternCompiler Compiler for supported exclude patterns.
      */
-    public function __construct(private readonly PatternCompiler $patterns = new PatternCompiler())
+    public function __construct(private readonly PatternCompiler $patternCompiler)
     {
+    }
+
+    /**
+     * Builds a standalone service with the supported pattern compiler.
+     *
+     * @return self Service configured with built-in collaborators.
+     */
+    public static function default(): self
+    {
+        return new self(new PatternCompiler());
     }
 
     /**
@@ -31,15 +41,15 @@ final class PhpCodeSnifferRenderer implements Renderer
     {
         $xml = static fn (string $text): string => htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
         $lines = ['    <file>.</file>', '    <arg name="extensions" value="php"/>'];
-        $patterns = [
+        $patternCompiler = [
             '(?-i)^(?!' . $this->includeRegex($scope->include) . ').+',
             '(?-i)^(?!' . $this->includeRegex($scope->include, true) . ').+/*',
             ...$this->hiddenDirectoryPatterns($scope->include),
         ];
 
         foreach ($scope->exclude as $pattern) {
-            $regex = $this->patterns->compile($pattern)->regex;
-            $patterns[] = '(?-i)^' . (str_ends_with($pattern, '/**') ? substr($regex, 0, -1) . '/*' : $regex);
+            $regex = $this->patternCompiler->compile($pattern)->regex;
+            $patternCompiler[] = '(?-i)^' . (str_ends_with($pattern, '/**') ? substr($regex, 0, -1) . '/*' : $regex);
         }
 
         foreach ($scope->include as $path) {
@@ -48,7 +58,7 @@ final class PhpCodeSnifferRenderer implements Renderer
             }
 
             foreach ($scope->exclude as $pattern) {
-                if ($this->patterns->matchesPath($pattern, $path)) {
+                if ($this->patternCompiler->matchesPath($pattern, $path)) {
                     continue 2;
                 }
             }
@@ -56,7 +66,7 @@ final class PhpCodeSnifferRenderer implements Renderer
             $lines[] = '    <file>' . $xml($path) . '</file>';
         }
 
-        foreach ($patterns as $pattern) {
+        foreach ($patternCompiler as $pattern) {
             $lines[] = '    <exclude-pattern type="relative">' . $xml($pattern) . '</exclude-pattern>';
         }
 
@@ -117,7 +127,7 @@ final class PhpCodeSnifferRenderer implements Renderer
         }
 
         $protected = array_values(array_unique($protected));
-        $patterns = [];
+        $patternCompiler = [];
         foreach (['', ...$protected] as $root) {
             $exceptions = [];
             foreach ($protected as $path) {
@@ -130,10 +140,10 @@ final class PhpCodeSnifferRenderer implements Renderer
 
             $prefix = $root === '' ? '' : preg_quote($root, '~') . '/';
             $except = $exceptions === [] ? '' : '(?!(?:' . implode('|', $exceptions) . ')(?:/|$))';
-            $patterns[] = '(?-i)^' . $prefix . $except . '(?:[^/]+/){0,}\\.[^/]+/*';
+            $patternCompiler[] = '(?-i)^' . $prefix . $except . '(?:[^/]+/){0,}\\.[^/]+/*';
         }
 
-        return $patterns;
+        return $patternCompiler;
     }
 
     /**

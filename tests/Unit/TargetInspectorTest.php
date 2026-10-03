@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\Renderer\Renderer;
 use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -25,9 +30,9 @@ final class TargetInspectorTest extends TestCase
         $root = $this->tempRoot();
         $this->fixture($root, []);
         $before = (string) file_get_contents($root . '/phpcs.xml');
-        $planner = TargetInspector::default();
+        $inspector = TargetInspector::default();
 
-        $inspection = $planner->inspect($root, 'phpcs', $planner->scopes($root)['phpcs']);
+        $inspection = $inspector->inspect($root, Tool::Phpcs, $inspector->scopes($root)['phpcs']);
 
         self::assertTrue($inspection->changed);
         self::assertArrayNotHasKey('after', get_object_vars($inspection));
@@ -41,12 +46,12 @@ final class TargetInspectorTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, []);
-        $planner = TargetInspector::default();
-        $scope = $planner->scopes($root)['phpcs'];
-        $first = $planner->inspect($root, 'phpcs', $scope);
+        $inspector = TargetInspector::default();
+        $scope = $inspector->scopes($root)['phpcs'];
+        $first = $inspector->inspect($root, Tool::Phpcs, $scope);
         $this->put($root, 'phpcs.xml', $first->replacement());
 
-        $matching = $planner->inspect($root, 'phpcs', $scope);
+        $matching = $inspector->inspect($root, Tool::Phpcs, $scope);
 
         self::assertFalse($matching->changed);
         self::assertArrayNotHasKey('after', get_object_vars($matching));
@@ -77,10 +82,10 @@ final class TargetInspectorTest extends TestCase
         $root = $this->tempRoot();
         $this->fixture($root, []);
         unlink($root . '/phpstan.neon');
-        $planner = TargetInspector::default();
+        $inspector = TargetInspector::default();
 
         $this->expectException(RuntimeException::class);
-        $planner->inspect($root, 'phpstan', $planner->scopes($root)['phpstan']);
+        $inspector->inspect($root, Tool::Phpstan, $inspector->scopes($root)['phpstan']);
     }
 
     /**
@@ -107,7 +112,7 @@ final class TargetInspectorTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, []);
-        $failing = new class () implements Renderer {
+        $failingRenderer = new class () implements Renderer {
             /**
              * Rejects one target to exercise local rendering failure.
              *
@@ -119,10 +124,16 @@ final class TargetInspectorTest extends TestCase
                 throw new RuntimeException('render failed');
             }
         };
-        $planner = new TargetInspector(renderers: new RendererRegistry(['phpcs' => $failing]));
-        $scope = $planner->scopes($root)['phpcs'];
+        $inspector = new TargetInspector(
+            renderers: new RendererRegistry(['phpcs' => $failingRenderer]),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+        );
+        $scope = $inspector->scopes($root)['phpcs'];
 
         $this->expectExceptionMessage('render failed');
-        $planner->inspect($root, 'phpcs', $scope);
+        $inspector->inspect($root, Tool::Phpcs, $scope);
     }
 }

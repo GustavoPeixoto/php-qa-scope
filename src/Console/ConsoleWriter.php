@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace GustavoPeixoto\PhpQaScope\Cli;
+namespace GustavoPeixoto\PhpQaScope\Console;
 
 /**
  * Buffers command output while optionally mirroring it to streams.
  */
-final class Output
+final class ConsoleWriter implements ConsoleWriterInterface
 {
     private string $stdout = '';
     private string $stderr = '';

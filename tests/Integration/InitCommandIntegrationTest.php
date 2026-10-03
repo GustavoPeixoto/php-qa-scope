@@ -5,23 +5,28 @@ declare(strict_types=1);
 namespace GustavoPeixoto\PhpQaScope\Tests\Integration;
 
 use GustavoPeixoto\PhpQaScope\Application;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
 use GustavoPeixoto\PhpQaScope\Command\CommandRegistry;
 use GustavoPeixoto\PhpQaScope\Command\InitCommand;
-use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
+use GustavoPeixoto\PhpQaScope\Console\Console;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriter;
 use GustavoPeixoto\PhpQaScope\Initializer\Initializer;
-use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocator;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;
 use GustavoPeixoto\PhpQaScope\Renderer\Renderer;
 use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
-use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
-use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeInitializer;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Synchronizer\Synchronizer;
+use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
 use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -43,13 +48,13 @@ final class InitCommandIntegrationTest extends TestCase
         self::assertSame(InitCommand::REVIEW_WARNING . "\n", $result['stderr']);
         $config = (new ScopeLoader())->load($root . '/php-qa-scope.yml');
         self::assertSame(['src'], $config->include);
-        self::assertSame(['phpcs', 'phpstan', 'php-cs-fixer'], $config->managedTools());
+        self::assertSame(Tool::cases(), $config->managedTools());
 
-        $registry = new TargetRegistry();
+        $registry = TargetRegistry::default();
         foreach ($config->managedTools() as $tool) {
             $target = $registry->get($tool);
             $contents = (string) file_get_contents($root . '/' . $target->path);
-            $block = (new ManagedBlock())->locate($contents, $target);
+            $block = (new BlockLocator())->locate($contents, $target);
             self::assertSame(
                 RendererRegistry::default()->get($tool)->render(new ToolScope(['src'], [])),
                 $block->content,
@@ -73,7 +78,7 @@ final class InitCommandIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->rawProject($root);
-        $observer = new class ($root) implements Renderer {
+        $observingRenderer = new class ($root) implements Renderer {
             public int $calls = 0;
 
             /**
@@ -94,36 +99,51 @@ final class InitCommandIntegrationTest extends TestCase
             public function render(ToolScope $scope): string
             {
                 ++$this->calls;
-                $targets = new TargetRegistry();
-                foreach (['phpcs', 'phpstan', 'php-cs-fixer'] as $tool) {
-                    $target = $targets->get($tool);
+                $targets = TargetRegistry::default();
+                foreach (['phpcs', 'phpstan', 'php-cs-fixer'] as $toolName) {
+                    $target = $targets->get(Tool::from($toolName));
                     $contents = (string) file_get_contents($this->root . '/' . $target->path);
                     InitCommandIntegrationTest::assertSame(
                         '',
-                        (new ManagedBlock())->locate($contents, $target)->content,
+                        (new BlockLocator())->locate($contents, $target)->content,
                     );
                 }
 
-                return RendererRegistry::default()->get('phpcs')->render($scope);
+                return RendererRegistry::default()->get(Tool::Phpcs)->render($scope);
             }
         };
-        $defaults = RendererRegistry::default();
-        $inspector = new TargetInspector(renderers: new RendererRegistry([
-            'phpcs' => $observer,
-            'phpstan' => $defaults->get('phpstan'),
-            'php-cs-fixer' => $defaults->get('php-cs-fixer'),
-        ]));
+        $defaultRenderers = RendererRegistry::default();
+        $inspector = new TargetInspector(
+            renderers: new RendererRegistry([
+                'phpcs' => $observingRenderer,
+                'phpstan' => $defaultRenderers->get(Tool::Phpstan),
+                'php-cs-fixer' => $defaultRenderers->get(Tool::PhpCsFixer),
+            ]),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+        );
         $app = new Application(new CommandRegistry([
             new InitCommand(
                 new Initializer(
                     new Synchronizer($inspector, new TargetWriter()),
-                    new TargetInitializer(InsertionLocatorRegistry::default()),
+                    new TargetInitializer(
+                        InsertionLocatorRegistry::default(),
+                        targets: TargetRegistry::default(),
+                        blockLocator: new BlockLocator(),
+                        writer: new TargetWriter(),
+                    ),
+                    scopeInitializer: new ScopeInitializer(),
+                    targets: TargetRegistry::default(),
+                    loader: new ScopeLoader(),
+                    scopeCalculator: ScopeCalculator::default(),
                 ),
             ),
         ]));
 
         self::assertSame(ExitCode::SUCCESS, $this->runApp($app, $root)['code']);
-        self::assertSame(1, $observer->calls);
+        self::assertSame(1, $observingRenderer->calls);
         self::assertSame(ExitCode::SUCCESS, $this->runApp(Application::default(), $root, 'check')['code']);
     }
 
@@ -213,7 +233,7 @@ final class InitCommandIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->rawProject($root);
-        $failure = new class () implements Renderer {
+        $failingRenderer = new class () implements Renderer {
             /**
              * Simulates a target-local rendering error after all pairs are persisted.
              *
@@ -225,17 +245,32 @@ final class InitCommandIntegrationTest extends TestCase
                 throw new RuntimeException('simulated rendering failure');
             }
         };
-        $defaults = RendererRegistry::default();
-        $inspector = new TargetInspector(renderers: new RendererRegistry([
-            'phpcs' => $failure,
-            'phpstan' => $defaults->get('phpstan'),
-            'php-cs-fixer' => $defaults->get('php-cs-fixer'),
-        ]));
+        $defaultRenderers = RendererRegistry::default();
+        $inspector = new TargetInspector(
+            renderers: new RendererRegistry([
+                'phpcs' => $failingRenderer,
+                'phpstan' => $defaultRenderers->get(Tool::Phpstan),
+                'php-cs-fixer' => $defaultRenderers->get(Tool::PhpCsFixer),
+            ]),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+        );
         $app = new Application(new CommandRegistry([
             new InitCommand(
                 new Initializer(
                     new Synchronizer($inspector, new TargetWriter()),
-                    new TargetInitializer(InsertionLocatorRegistry::default()),
+                    new TargetInitializer(
+                        InsertionLocatorRegistry::default(),
+                        targets: TargetRegistry::default(),
+                        blockLocator: new BlockLocator(),
+                        writer: new TargetWriter(),
+                    ),
+                    scopeInitializer: new ScopeInitializer(),
+                    targets: TargetRegistry::default(),
+                    loader: new ScopeLoader(),
+                    scopeCalculator: ScopeCalculator::default(),
                 ),
             ),
         ]));
@@ -245,9 +280,9 @@ final class InitCommandIntegrationTest extends TestCase
         self::assertSame("UPDATED phpstan.neon\nUPDATED php-cs-fixer.dist.php\n", $result['stdout']);
         self::assertStringContainsString('ERROR phpcs.xml: simulated rendering failure', $result['stderr']);
         self::assertStringEndsWith(InitCommand::REVIEW_WARNING . "\n", $result['stderr']);
-        self::assertSame('', (new ManagedBlock())->locate(
+        self::assertSame('', (new BlockLocator())->locate(
             (string) file_get_contents($root . '/phpcs.xml'),
-            (new TargetRegistry())->get('phpcs'),
+            TargetRegistry::default()->get(Tool::Phpcs),
         )->content);
         $inode = fileinode($root . '/phpstan.neon');
 
@@ -311,7 +346,16 @@ final class InitCommandIntegrationTest extends TestCase
             new InitCommand(
                 new Initializer(
                     new Synchronizer(TargetInspector::default(), new TargetWriter()),
-                    markers: new TargetInitializer(locators: new InsertionLocatorRegistry(['phpstan' => $locator])),
+                    targetInitializer: new TargetInitializer(
+                        locators: new InsertionLocatorRegistry(['phpstan' => $locator]),
+                        targets: TargetRegistry::default(),
+                        blockLocator: new BlockLocator(),
+                        writer: new TargetWriter(),
+                    ),
+                    scopeInitializer: new ScopeInitializer(),
+                    targets: TargetRegistry::default(),
+                    loader: new ScopeLoader(),
+                    scopeCalculator: ScopeCalculator::default(),
                 ),
             ),
         ]));
@@ -386,7 +430,7 @@ final class InitCommandIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->put($root, 'phpstan.neon', "parameters:\n    level: 6\n");
-        $failure = new class () implements Renderer {
+        $failingRenderer = new class () implements Renderer {
             /**
              * Fails the only target's synchronization after successful preparation.
              *
@@ -398,12 +442,27 @@ final class InitCommandIntegrationTest extends TestCase
                 throw new RuntimeException('rendering failed');
             }
         };
-        $inspector = new TargetInspector(renderers: new RendererRegistry(['phpstan' => $failure]));
+        $inspector = new TargetInspector(
+            renderers: new RendererRegistry(['phpstan' => $failingRenderer]),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+        );
         $app = new Application(new CommandRegistry([
             new InitCommand(
                 new Initializer(
                     new Synchronizer($inspector, new TargetWriter()),
-                    new TargetInitializer(InsertionLocatorRegistry::default()),
+                    new TargetInitializer(
+                        InsertionLocatorRegistry::default(),
+                        targets: TargetRegistry::default(),
+                        blockLocator: new BlockLocator(),
+                        writer: new TargetWriter(),
+                    ),
+                    scopeInitializer: new ScopeInitializer(),
+                    targets: TargetRegistry::default(),
+                    loader: new ScopeLoader(),
+                    scopeCalculator: ScopeCalculator::default(),
                 ),
             ),
         ]));
@@ -449,11 +508,11 @@ final class InitCommandIntegrationTest extends TestCase
             'phpstan' => "parameters:\r\n",
             'php-cs-fixer' => "<?php\r\n",
         ];
-        $targets = new TargetRegistry();
-        foreach ($prefixes as $tool => $prefix) {
-            $target = $targets->get($tool);
-            $rendered = RendererRegistry::default()->get($tool)->render(new ToolScope(['src'], []));
-            $pair = ($tool === 'phpcs' ? "\r\n" : '')
+        $targets = TargetRegistry::default();
+        foreach ($prefixes as $toolName => $prefix) {
+            $target = $targets->get(Tool::from($toolName));
+            $rendered = RendererRegistry::default()->get(Tool::from($toolName))->render(new ToolScope(['src'], []));
+            $pair = ($toolName === 'phpcs' ? "\r\n" : '')
                 . $target->indent . sprintf($target->marker, 'start') . "\r\n"
                 . str_replace("\n", "\r\n", $rendered)
                 . $target->indent . sprintf($target->marker, 'end') . "\r\n";
@@ -469,11 +528,11 @@ final class InitCommandIntegrationTest extends TestCase
      */
     public function testEachIsolatedToolCompletesAndChecksSuccessfully(): void
     {
-        $targets = new TargetRegistry();
-        foreach (['phpcs', 'phpstan', 'php-cs-fixer'] as $tool) {
+        $targets = TargetRegistry::default();
+        foreach (['phpcs', 'phpstan', 'php-cs-fixer'] as $toolName) {
             $root = $this->tempRoot();
             $original = $this->rawProject($root);
-            $file = $targets->get($tool)->path;
+            $file = $targets->get(Tool::from($toolName))->path;
             foreach (array_keys($original) as $other) {
                 if ($other !== $file) {
                     unlink($root . '/' . $other);
@@ -482,7 +541,10 @@ final class InitCommandIntegrationTest extends TestCase
             $result = $this->runApp(Application::default(), $root);
             self::assertSame(ExitCode::SUCCESS, $result['code']);
             self::assertSame("UPDATED $file\n", $result['stdout']);
-            self::assertSame([$tool], (new ScopeLoader())->load($root . '/php-qa-scope.yml')->managedTools());
+            self::assertSame(
+                [Tool::from($toolName)],
+                (new ScopeLoader())->load($root . '/php-qa-scope.yml')->managedTools(),
+            );
             self::assertSame(ExitCode::SUCCESS, $this->runApp(Application::default(), $root, 'check')['code']);
             foreach (array_keys($original) as $other) {
                 if ($other !== $file) {
@@ -567,7 +629,7 @@ final class InitCommandIntegrationTest extends TestCase
     {
         $stdout = fopen('php://memory', 'w+');
         $stderr = fopen('php://memory', 'w+');
-        $code = $app->run(['php-qa-scope', $command], $root, $stdout, $stderr);
+        $code = $app->run(['php-qa-scope', $command], new Console(new ConsoleWriter($stdout, $stderr)), $root);
         rewind($stdout);
         rewind($stderr);
         $out = stream_get_contents($stdout);

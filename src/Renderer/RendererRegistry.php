@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Renderer;
 
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -28,20 +29,22 @@ final class RendererRegistry
     public static function default(): self
     {
         return new self([
-            'phpcs' => new PhpCodeSnifferRenderer(),
-            'phpstan' => new PhpStanRenderer(),
-            'php-cs-fixer' => new PhpCsFixerRenderer(),
+            Tool::Phpcs->value => PhpCodeSnifferRenderer::default(),
+            Tool::Phpstan->value => PhpStanRenderer::default(),
+            Tool::PhpCsFixer->value => PhpCsFixerRenderer::default(),
         ]);
     }
 
     /**
      * Returns the renderer registered for a tool.
      *
-     * @param string $tool Tool name to resolve.
+     * @param Tool $tool Tool name to resolve.
      * @return Renderer Renderer for the requested tool.
      */
-    public function get(string $tool): Renderer
+    public function get(Tool $tool): Renderer
     {
-        return $this->renderers[$tool] ?? throw new RuntimeException("No renderer registered for '$tool'.");
+        return $this->renderers[$tool->value] ?? throw new RuntimeException(
+            sprintf("No renderer registered for '%s'.", $tool->value),
+        );
     }
 }

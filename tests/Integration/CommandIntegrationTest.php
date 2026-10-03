@@ -6,9 +6,12 @@ namespace GustavoPeixoto\PhpQaScope\Tests\Integration;
 
 use GustavoPeixoto\PhpQaScope\Application;
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
-use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
+use GustavoPeixoto\PhpQaScope\Console\Console;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriter;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -87,9 +90,9 @@ final class CommandIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, []);
-        $planner = TargetInspector::default();
+        $inspector = TargetInspector::default();
         $writer = new TargetWriter();
-        $inspection = $planner->inspect($root, 'phpcs', $planner->scopes($root)['phpcs']);
+        $inspection = $inspector->inspect($root, Tool::Phpcs, $inspector->scopes($root)['phpcs']);
         $this->put($root, 'phpcs.xml', 'concurrent edit');
 
         try {
@@ -108,8 +111,8 @@ final class CommandIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, []);
-        $planner = TargetInspector::default();
-        $inspection = $planner->inspect($root, 'phpcs', $planner->scopes($root)['phpcs']);
+        $inspector = TargetInspector::default();
+        $inspection = $inspector->inspect($root, Tool::Phpcs, $inspector->scopes($root)['phpcs']);
         unlink($root . '/phpcs.xml');
 
         try {
@@ -133,9 +136,9 @@ final class CommandIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->fixture($root, []);
-        $planner = TargetInspector::default();
-        $fixer = $planner->inspect($root, 'php-cs-fixer', $planner->scopes($root)['php-cs-fixer']);
-        $this->put($root, 'php-cs-fixer.dist.php', $fixer->replacement());
+        $inspector = TargetInspector::default();
+        $inspection = $inspector->inspect($root, Tool::PhpCsFixer, $inspector->scopes($root)['php-cs-fixer']);
+        $this->put($root, 'php-cs-fixer.dist.php', $inspection->replacement());
         $this->put($root, 'phpstan.neon', 'broken');
         $app = Application::default();
 
@@ -263,7 +266,7 @@ final class CommandIntegrationTest extends TestCase
     {
         $stdout = fopen('php://memory', 'w+');
         $stderr = fopen('php://memory', 'w+');
-        $code = $app->run($argv, $root, $stdout, $stderr);
+        $code = $app->run($argv, new Console(new ConsoleWriter($stdout, $stderr)), $root);
         rewind($stdout);
         rewind($stderr);
 

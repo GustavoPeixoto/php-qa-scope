@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Target;
 
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -11,30 +12,52 @@ use RuntimeException;
  */
 final class TargetRegistry
 {
-    /** @var array<string, TargetFile> Target files indexed by tool name. */
-    private array $targets;
+    /**
+     * Creates a registry from target definitions with matching canonical tool keys.
+     *
+     * @param array<string, TargetFile> $targets Target files indexed by tool backing value.
+     */
+    public function __construct(private readonly array $targets)
+    {
+        foreach ($targets as $tool => $target) {
+            if ($tool !== $target->tool->value) {
+                throw new RuntimeException(
+                    sprintf("Target key '%s' does not match tool '%s'.", $tool, $target->tool->value),
+                );
+            }
+        }
+    }
 
     /**
-     * Creates the registry with built-in target definitions.
+     * Builds the supported native target definitions in discovery order.
+     *
+     * @return self Registry containing the built-in target definitions.
      */
-    public function __construct()
+    public static function default(): self
     {
-        $this->targets = [
-            'phpcs' => new TargetFile('phpcs', 'phpcs.xml', '<!-- php-qa-scope:%s -->', '    '),
-            'phpstan' => new TargetFile('phpstan', 'phpstan.neon', '# php-qa-scope:%s', '    '),
-            'php-cs-fixer' => new TargetFile('php-cs-fixer', 'php-cs-fixer.dist.php', '// php-qa-scope:%s', ''),
-        ];
+        return new self([
+            Tool::Phpcs->value => new TargetFile(Tool::Phpcs, 'phpcs.xml', '<!-- php-qa-scope:%s -->', '    '),
+            Tool::Phpstan->value => new TargetFile(Tool::Phpstan, 'phpstan.neon', '# php-qa-scope:%s', '    '),
+            Tool::PhpCsFixer->value => new TargetFile(
+                Tool::PhpCsFixer,
+                'php-cs-fixer.dist.php',
+                '// php-qa-scope:%s',
+                '',
+            ),
+        ]);
     }
 
     /**
      * Returns the target file registered for a tool.
      *
-     * @param string $tool Tool name to resolve.
+     * @param Tool $tool Tool name to resolve.
      * @return TargetFile Native configuration target for the tool.
      */
-    public function get(string $tool): TargetFile
+    public function get(Tool $tool): TargetFile
     {
-        return $this->targets[$tool] ?? throw new RuntimeException("No target registered for '$tool'.");
+        return $this->targets[$tool->value] ?? throw new RuntimeException(
+            sprintf("No target registered for '%s'.", $tool->value),
+        );
     }
 
     /**

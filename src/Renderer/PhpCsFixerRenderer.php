@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Renderer;
 
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Glob\PatternCompiler;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use SplFileInfo;
 
 /**
@@ -16,10 +16,20 @@ final class PhpCsFixerRenderer implements Renderer
     /**
      * Creates the renderer with the pattern compiler used for excludes.
      *
-     * @param PatternCompiler $patterns Compiler for supported exclude patterns.
+     * @param PatternCompiler $patternCompiler Compiler for supported exclude patterns.
      */
-    public function __construct(private readonly PatternCompiler $patterns = new PatternCompiler())
+    public function __construct(private readonly PatternCompiler $patternCompiler)
     {
+    }
+
+    /**
+     * Builds a standalone service with the supported pattern compiler.
+     *
+     * @return self Service configured with built-in collaborators.
+     */
+    public static function default(): self
+    {
+        return new self(new PatternCompiler());
     }
 
     /**
@@ -61,11 +71,11 @@ final class PhpCsFixerRenderer implements Renderer
         }
 
         if ($scope->exclude !== []) {
-            $patterns = array_map(
-                fn (string $pattern): string => $this->patterns->compile($pattern)->regex,
+            $patternCompiler = array_map(
+                fn (string $pattern): string => $this->patternCompiler->compile($pattern)->regex,
                 $scope->exclude,
             );
-            $regex = '~^(?:' . implode('|', $patterns) . ')~D';
+            $regex = '~^(?:' . implode('|', $patternCompiler) . ')~D';
             $lines = [
                 ...$lines,
                 '$finder = new CallbackFilterIterator(',

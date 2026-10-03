@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\InsertionLocator;
 
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -28,20 +29,22 @@ final class InsertionLocatorRegistry
     public static function default(): self
     {
         return new self([
-            'phpcs' => new PhpCodeSnifferInsertionLocator(),
-            'phpstan' => new PhpStanInsertionLocator(),
-            'php-cs-fixer' => new PhpCsFixerInsertionLocator(),
+            Tool::Phpcs->value => new PhpCodeSnifferInsertionLocator(),
+            Tool::Phpstan->value => new PhpStanInsertionLocator(),
+            Tool::PhpCsFixer->value => new PhpCsFixerInsertionLocator(),
         ]);
     }
 
     /**
      * Returns the insertion strategy registered for a tool.
      *
-     * @param string $tool Tool name to resolve.
+     * @param Tool $tool Tool name to resolve.
      * @return InsertionLocator Insertion strategy for the requested tool.
      */
-    public function get(string $tool): InsertionLocator
+    public function get(Tool $tool): InsertionLocator
     {
-        return $this->locators[$tool] ?? throw new RuntimeException("No insertion locator registered for '$tool'.");
+        return $this->locators[$tool->value] ?? throw new RuntimeException(
+            sprintf("No insertion locator registered for '%s'.", $tool->value),
+        );
     }
 }

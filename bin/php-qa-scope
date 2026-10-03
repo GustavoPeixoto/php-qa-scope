@@ -3,14 +3,18 @@
 
 declare(strict_types=1);
 
+use GustavoPeixoto\PhpQaScope\Application;
+use GustavoPeixoto\PhpQaScope\Console\Console;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriter;
+
 foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
     if (is_file($autoload)) {
         require $autoload;
-        exit(GustavoPeixoto\PhpQaScope\Application::default()->run(
+        $console = new Console(new ConsoleWriter(STDOUT, STDERR));
+
+        exit(Application::default()->run(
             $_SERVER['argv'] ?? [],
-            null,
-            STDOUT,
-            STDERR,
+            $console,
         ));
     }
 }

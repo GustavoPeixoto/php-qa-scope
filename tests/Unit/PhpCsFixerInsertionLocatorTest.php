@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
-use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\PhpCsFixerInsertionLocator;
-use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
+use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -30,15 +33,18 @@ final class PhpCsFixerInsertionLocatorTest extends TestCase
             $suffix = $eol . '$finder = "old finder";' . $eol . 'return $finder;' . $eol;
             $before = $prefix . $suffix;
             $this->put($root, 'php-cs-fixer.dist.php', $before);
-            $preparer = new TargetInitializer(
+            $targetInitializer = new TargetInitializer(
                 locators: new InsertionLocatorRegistry(['php-cs-fixer' => new PhpCsFixerInsertionLocator()]),
+                targets: TargetRegistry::default(),
+                blockLocator: new BlockLocator(),
+                writer: new TargetWriter(),
             );
 
-            self::assertTrue($preparer->insert($root, 'php-cs-fixer'));
+            self::assertTrue($targetInitializer->insert($root, Tool::PhpCsFixer));
             $pair = $eol . '// php-qa-scope:start' . $eol . '// php-qa-scope:end' . $eol;
             self::assertSame($prefix . $pair . $suffix, file_get_contents($root . '/php-cs-fixer.dist.php'));
 
-            $inspection = TargetInspector::default()->inspect($root, 'php-cs-fixer', new ToolScope(['src'], []));
+            $inspection = TargetInspector::default()->inspect($root, Tool::PhpCsFixer, new ToolScope(['src'], []));
             (new TargetWriter())->write(
                 $root,
                 $inspection->target->path,
@@ -61,11 +67,14 @@ final class PhpCsFixerInsertionLocatorTest extends TestCase
         $before = "<?php\n// namespace words are comments\n"
             . "file_put_contents(__DIR__ . '/side-effect', 'executed');\nreturn null;\n";
         $this->put($root, 'php-cs-fixer.dist.php', $before);
-        $preparer = new TargetInitializer(
+        $targetInitializer = new TargetInitializer(
             locators: new InsertionLocatorRegistry(['php-cs-fixer' => new PhpCsFixerInsertionLocator()]),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+            writer: new TargetWriter(),
         );
 
-        self::assertTrue($preparer->insert($root, 'php-cs-fixer'));
+        self::assertTrue($targetInitializer->insert($root, Tool::PhpCsFixer));
         self::assertFileDoesNotExist($root . '/side-effect');
         self::assertStringEndsWith(
             substr($before, strlen("<?php\n")),
@@ -90,12 +99,15 @@ final class PhpCsFixerInsertionLocatorTest extends TestCase
         foreach ($files as $before) {
             $root = $this->tempRoot();
             $this->put($root, 'php-cs-fixer.dist.php', $before);
-            $preparer = new TargetInitializer(
+            $targetInitializer = new TargetInitializer(
                 locators: new InsertionLocatorRegistry(['php-cs-fixer' => new PhpCsFixerInsertionLocator()]),
+                targets: TargetRegistry::default(),
+                blockLocator: new BlockLocator(),
+                writer: new TargetWriter(),
             );
 
             try {
-                $preparer->insert($root, 'php-cs-fixer');
+                $targetInitializer->insert($root, Tool::PhpCsFixer);
                 self::fail('Unsupported PHP requires manual placement.');
             } catch (RuntimeException $error) {
                 self::assertStringContainsString('Place the markers manually', $error->getMessage());

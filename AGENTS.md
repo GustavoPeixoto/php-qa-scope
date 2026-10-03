@@ -19,6 +19,7 @@ Conventions are durable documents in `conventions/` that define cross-cutting pr
 | [conventions/language.md](conventions/language.md) | Default language for conversation, project context, and artifacts. |
 | [conventions/repository.md](conventions/repository.md) | Repository topology, entrypoints, package root layout, public package distribution, and documentation boundaries. |
 | [conventions/phpdoc.md](conventions/phpdoc.md) | PHPDoc requirements for class-like declarations, methods, functions, parameters, returns, templates, and closure signatures. |
+| [conventions/php-composition.md](conventions/php-composition.md) | Internal PHP tool identities, dependency injection, default factories, registries, application composition, and CLI parsing responsibilities. |
 | [conventions/workflow.md](conventions/workflow.md) | Exploration, planning, proposals, and applying changes. |
 | [conventions/git.md](conventions/git.md) | Versioned state, diffs, branches, commits, pushes, and change review. |
 | [conventions/environment.md](conventions/environment.md) | Environments, local infrastructure, Docker, Compose, Dev Containers, `dev`, and PHP package tooling. |

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\PhpCodeSnifferInsertionLocator;
-use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
+use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
 use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -39,18 +41,21 @@ final class PhpCodeSnifferInsertionLocatorTest extends TestCase
             $before = '<?xml version="1.0"?>' . $eol
                 . '<ruleset name="App"><file>app</file><rule ref="PSR12"/></ruleset>' . $eol;
             $this->put($root, 'phpcs.xml', $before);
-            $preparer = new TargetInitializer(
+            $targetInitializer = new TargetInitializer(
                 locators: new InsertionLocatorRegistry(['phpcs' => new PhpCodeSnifferInsertionLocator()]),
+                targets: TargetRegistry::default(),
+                blockLocator: new BlockLocator(),
+                writer: new TargetWriter(),
             );
 
-            self::assertTrue($preparer->insert($root, 'phpcs'));
+            self::assertTrue($targetInitializer->insert($root, Tool::Phpcs));
             $after = (string) file_get_contents($root . '/phpcs.xml');
             $pair = $eol . '    <!-- php-qa-scope:start -->' . $eol
                 . '    <!-- php-qa-scope:end -->' . $eol;
             self::assertSame($before, str_replace($pair, '', $after));
             self::assertSame(
                 '',
-                (new ManagedBlock())->locate($after, (new TargetRegistry())->get('phpcs'))->content,
+                (new BlockLocator())->locate($after, TargetRegistry::default()->get(Tool::Phpcs))->content,
             );
         }
     }
@@ -71,12 +76,15 @@ final class PhpCodeSnifferInsertionLocatorTest extends TestCase
         foreach ($files as $before) {
             $root = $this->tempRoot();
             $this->put($root, 'phpcs.xml', $before);
-            $preparer = new TargetInitializer(
+            $targetInitializer = new TargetInitializer(
                 locators: new InsertionLocatorRegistry(['phpcs' => new PhpCodeSnifferInsertionLocator()]),
+                targets: TargetRegistry::default(),
+                blockLocator: new BlockLocator(),
+                writer: new TargetWriter(),
             );
 
             try {
-                $preparer->insert($root, 'phpcs');
+                $targetInitializer->insert($root, Tool::Phpcs);
                 self::fail('Unsupported XML must require manual placement.');
             } catch (RuntimeException $error) {
                 self::assertStringContainsString('Place the markers manually', $error->getMessage());

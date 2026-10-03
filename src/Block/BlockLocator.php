@@ -10,7 +10,7 @@ use RuntimeException;
 /**
  * Finds managed php-qa-scope marker blocks in target files.
  */
-final class ManagedBlock
+final class BlockLocator
 {
     /**
      * Locates the content between managed start and end markers.

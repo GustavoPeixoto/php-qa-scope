@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Target;
 
-use GustavoPeixoto\PhpQaScope\Scope\EffectiveScope;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
+use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator;
 use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
 use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
-use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
-use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -16,33 +17,22 @@ use RuntimeException;
  */
 final class TargetInspector
 {
-    private readonly ScopeLoader $loader;
-    private readonly EffectiveScope $effectiveScope;
-    private readonly RendererRegistry $renderers;
-    private readonly TargetRegistry $targets;
-    private readonly ManagedBlock $managedBlock;
-
     /**
-     * Creates an inspector with overridable collaborators for tests.
+     * Creates an inspector with the supplied scope and native-target collaborators.
      *
-     * @param ScopeLoader|null $loader Loader for project scope configuration.
-     * @param EffectiveScope|null $effectiveScope Calculator for managed tool scopes.
-     * @param RendererRegistry|null $renderers Registry of native renderers.
-     * @param TargetRegistry|null $targets Registry of native target files.
-     * @param ManagedBlock|null $managedBlock Locator for managed marker blocks.
+     * @param ScopeLoader $loader Loader for project scope configuration.
+     * @param ScopeCalculator $scopeCalculator Calculator for managed tool scopes.
+     * @param RendererRegistry $renderers Registry of native renderers.
+     * @param TargetRegistry $targets Registry of native target files.
+     * @param BlockLocator $blockLocator Locator for managed marker blocks.
      */
     public function __construct(
-        ?ScopeLoader $loader = null,
-        ?EffectiveScope $effectiveScope = null,
-        ?RendererRegistry $renderers = null,
-        ?TargetRegistry $targets = null,
-        ?ManagedBlock $managedBlock = null,
+        private readonly ScopeLoader $loader,
+        private readonly ScopeCalculator $scopeCalculator,
+        private readonly RendererRegistry $renderers,
+        private readonly TargetRegistry $targets,
+        private readonly BlockLocator $blockLocator,
     ) {
-        $this->loader = $loader ?? new ScopeLoader();
-        $this->effectiveScope = $effectiveScope ?? new EffectiveScope();
-        $this->renderers = $renderers ?? RendererRegistry::default();
-        $this->targets = $targets ?? new TargetRegistry();
-        $this->managedBlock = $managedBlock ?? new ManagedBlock();
     }
 
     /**
@@ -52,7 +42,13 @@ final class TargetInspector
      */
     public static function default(): self
     {
-        return new self();
+        return new self(
+            new ScopeLoader(),
+            ScopeCalculator::default(),
+            RendererRegistry::default(),
+            TargetRegistry::default(),
+            new BlockLocator(),
+        );
     }
 
     /**
@@ -63,16 +59,16 @@ final class TargetInspector
      */
     public function scopes(string $root): array
     {
-        return $this->effectiveScope->calculate($this->loader->load($root . '/php-qa-scope.yml'));
+        return $this->scopeCalculator->calculate($this->loader->load($root . '/php-qa-scope.yml'));
     }
 
     /**
      * Resolves the native file associated with a managed tool.
      *
-     * @param string $tool Managed tool name.
+     * @param Tool $tool Managed tool name.
      * @return TargetFile Native configuration target.
      */
-    public function target(string $tool): TargetFile
+    public function target(Tool $tool): TargetFile
     {
         return $this->targets->get($tool);
     }
@@ -81,11 +77,11 @@ final class TargetInspector
      * Validates and compares a single native target without preparing replacement text.
      *
      * @param string $root Project root containing native QA configuration files.
-     * @param string $tool Managed tool name.
+     * @param Tool $tool Managed tool name.
      * @param ToolScope $scope Effective scope for the tool.
      * @return TargetInspection Current target content and comparison result.
      */
-    public function inspect(string $root, string $tool, ToolScope $scope): TargetInspection
+    public function inspect(string $root, Tool $tool, ToolScope $scope): TargetInspection
     {
         $target = $this->target($tool);
         $expected = $this->renderers->get($tool)->render($scope);
@@ -100,7 +96,7 @@ final class TargetInspector
             throw new RuntimeException("$target->path: could not read the configuration.");
         }
 
-        $block = $this->managedBlock->locate($before, $target);
+        $block = $this->blockLocator->locate($before, $target);
         $changed = str_replace("\r\n", "\n", $block->content) !== $expected;
 
         return new TargetInspection($target, $before, $block, $expected, $changed);

@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Integration;
 
-use GustavoPeixoto\PhpQaScope\Cli\Output;
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriter;
 use GustavoPeixoto\PhpQaScope\Initializer\Initializer;
-use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;
 use GustavoPeixoto\PhpQaScope\Renderer\Renderer;
 use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
-use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeInitializer;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Synchronizer\Synchronizer;
+use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
 use RuntimeException;
 
@@ -31,29 +36,38 @@ final class InitializerIntegrationTest extends TestCase
         $this->put($root, 'phpstan.neon', "parameters:\n    level: 6\n");
         $initializer = new Initializer(
             new Synchronizer(TargetInspector::default(), new TargetWriter()),
-            new TargetInitializer(InsertionLocatorRegistry::default()),
+            new TargetInitializer(
+                InsertionLocatorRegistry::default(),
+                targets: TargetRegistry::default(),
+                blockLocator: new BlockLocator(),
+                writer: new TargetWriter(),
+            ),
+            scopeInitializer: new ScopeInitializer(),
+            targets: TargetRegistry::default(),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
         );
-        $output = new Output();
+        $console = new ConsoleWriter();
 
-        $result = $initializer->initialize($root, $output);
+        $result = $initializer->initialize($root, $console);
 
         self::assertFalse($result->hasErrors);
         self::assertTrue($result->changed);
-        self::assertStringContainsString('UPDATED phpstan.neon', $output->stdout());
-        self::assertSame('', $output->stderr());
+        self::assertStringContainsString('UPDATED phpstan.neon', $console->stdout());
+        self::assertSame('', $console->stderr());
         $before = file_get_contents($root . '/phpstan.neon');
         $inode = fileinode($root . '/phpstan.neon');
-        $retryOutput = new Output();
+        $retryConsole = new ConsoleWriter();
 
-        $retry = $initializer->initialize($root, $retryOutput);
+        $retry = $initializer->initialize($root, $retryConsole);
 
         self::assertFalse($retry->hasErrors);
         self::assertFalse($retry->changed);
         self::assertSame($before, file_get_contents($root . '/phpstan.neon'));
         clearstatcache(true, $root . '/phpstan.neon');
         self::assertSame($inode, fileinode($root . '/phpstan.neon'));
-        self::assertStringContainsString('OK phpstan.neon', $retryOutput->stdout());
-        self::assertSame('', $retryOutput->stderr());
+        self::assertStringContainsString('OK phpstan.neon', $retryConsole->stdout());
+        self::assertSame('', $retryConsole->stderr());
     }
 
     /**
@@ -63,7 +77,7 @@ final class InitializerIntegrationTest extends TestCase
     {
         $root = $this->tempRoot();
         $this->put($root, 'phpstan.neon', "parameters:\n    level: 6\n");
-        $failure = new class () implements Renderer {
+        $failingRenderer = new class () implements Renderer {
             /**
              * Simulates a rendering failure after marker insertion has succeeded.
              *
@@ -75,21 +89,36 @@ final class InitializerIntegrationTest extends TestCase
                 throw new RuntimeException('rendering failed');
             }
         };
-        $inspector = new TargetInspector(renderers: new RendererRegistry(['phpstan' => $failure]));
+        $inspector = new TargetInspector(
+            renderers: new RendererRegistry(['phpstan' => $failingRenderer]),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+        );
         $initializer = new Initializer(
             new Synchronizer($inspector, new TargetWriter()),
-            new TargetInitializer(InsertionLocatorRegistry::default()),
+            new TargetInitializer(
+                InsertionLocatorRegistry::default(),
+                targets: TargetRegistry::default(),
+                blockLocator: new BlockLocator(),
+                writer: new TargetWriter(),
+            ),
+            scopeInitializer: new ScopeInitializer(),
+            targets: TargetRegistry::default(),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
         );
-        $output = new Output();
+        $console = new ConsoleWriter();
 
-        $result = $initializer->initialize($root, $output);
+        $result = $initializer->initialize($root, $console);
 
         self::assertTrue($result->hasErrors);
         self::assertTrue($result->changed);
         self::assertStringContainsString('php-qa-scope:start', file_get_contents($root . '/phpstan.neon'));
         self::assertStringContainsString('php-qa-scope:end', file_get_contents($root . '/phpstan.neon'));
-        self::assertStringContainsString('ERROR phpstan.neon: rendering failed', $output->stderr());
-        self::assertStringNotContainsString('WARNING:', $output->stderr());
+        self::assertStringContainsString('ERROR phpstan.neon: rendering failed', $console->stderr());
+        self::assertStringNotContainsString('WARNING:', $console->stderr());
     }
 
     /**
@@ -102,17 +131,26 @@ final class InitializerIntegrationTest extends TestCase
         $this->put($root, 'phpstan.neon', $before);
         $initializer = new Initializer(
             new Synchronizer(TargetInspector::default(), new TargetWriter()),
-            new TargetInitializer(InsertionLocatorRegistry::default()),
+            new TargetInitializer(
+                InsertionLocatorRegistry::default(),
+                targets: TargetRegistry::default(),
+                blockLocator: new BlockLocator(),
+                writer: new TargetWriter(),
+            ),
+            scopeInitializer: new ScopeInitializer(),
+            targets: TargetRegistry::default(),
+            loader: new ScopeLoader(),
+            scopeCalculator: ScopeCalculator::default(),
         );
-        $output = new Output();
+        $console = new ConsoleWriter();
 
-        $result = $initializer->initialize($root, $output);
+        $result = $initializer->initialize($root, $console);
 
         self::assertTrue($result->hasErrors);
         self::assertFalse($result->changed);
         self::assertFileExists($root . '/php-qa-scope.yml');
         self::assertSame($before, file_get_contents($root . '/phpstan.neon'));
-        self::assertSame('', $output->stdout());
-        self::assertStringContainsString('ERROR phpstan.neon:', $output->stderr());
+        self::assertSame('', $console->stdout());
+        self::assertStringContainsString('ERROR phpstan.neon:', $console->stderr());
     }
 }

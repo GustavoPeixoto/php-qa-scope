@@ -6,7 +6,7 @@ namespace GustavoPeixoto\PhpQaScope\Command;
 
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
 use GustavoPeixoto\PhpQaScope\Cli\Input;
-use GustavoPeixoto\PhpQaScope\Cli\Output;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface;
 use GustavoPeixoto\PhpQaScope\Initializer\Initializer;
 
 /**
@@ -41,14 +41,14 @@ final class InitCommand implements Command
      * Runs initialization, emits review guidance, and maps the result to an exit code.
      *
      * @param Input $input Parsed command name and project root.
-     * @param Output $output Destination for results, local errors, and review guidance.
+     * @param ConsoleWriterInterface $console Destination for results, local errors, and review guidance.
      * @return int Success unless preparation or synchronization encountered an error.
      */
-    public function execute(Input $input, Output $output): int
+    public function execute(Input $input, ConsoleWriterInterface $console): int
     {
-        $result = $this->initializer->initialize($input->root, $output);
+        $result = $this->initializer->initialize($input->root, $console);
         if ($result->changed) {
-            $output->errorLine(self::REVIEW_WARNING);
+            $console->errorLine(self::REVIEW_WARNING);
         }
 
         return $result->hasErrors ? ExitCode::ERROR : ExitCode::SUCCESS;

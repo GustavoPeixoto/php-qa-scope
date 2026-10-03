@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\Target\TargetFile;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
  * Covers managed block marker location and validation.
  */
-final class ManagedBlockTest extends TestCase
+final class BlockLocatorTest extends TestCase
 {
     private TargetFile $target;
 
@@ -21,7 +22,7 @@ final class ManagedBlockTest extends TestCase
      */
     protected function setUp(): void
     {
-        $this->target = new TargetFile('phpstan', 'phpstan.neon', '# php-qa-scope:%s', '    ');
+        $this->target = new TargetFile(Tool::Phpstan, 'phpstan.neon', '# php-qa-scope:%s', '    ');
     }
 
     /**
@@ -30,7 +31,7 @@ final class ManagedBlockTest extends TestCase
     public function testLocatesValidBlockAndPreservesLineEndingSignal(): void
     {
         $text = "parameters:\r\n    # php-qa-scope:start\r\n    paths: []\r\n    # php-qa-scope:end\r\n";
-        $block = (new ManagedBlock())->locate($text, $this->target);
+        $block = (new BlockLocator())->locate($text, $this->target);
 
         self::assertSame("\r\n", $block->eol);
         self::assertSame("    paths: []\r\n", $block->content);
@@ -52,7 +53,7 @@ final class ManagedBlockTest extends TestCase
             $exception = null;
 
             try {
-                (new ManagedBlock())->locate($text, $this->target);
+                (new BlockLocator())->locate($text, $this->target);
             } catch (RuntimeException $error) {
                 $exception = $error;
             }

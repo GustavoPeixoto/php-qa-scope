@@ -6,7 +6,7 @@ namespace GustavoPeixoto\PhpQaScope\Command;
 
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
 use GustavoPeixoto\PhpQaScope\Cli\Input;
-use GustavoPeixoto\PhpQaScope\Cli\Output;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface;
 use GustavoPeixoto\PhpQaScope\Synchronizer\Synchronizer;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
 
@@ -41,15 +41,15 @@ final class SyncCommand implements Command
      * Updates each valid divergent target and aggregates any local errors.
      *
      * @param Input $input Parsed command input.
-     * @param Output $output Output writer for per-target statuses.
+     * @param ConsoleWriterInterface $console Destination for per-target statuses.
      * @return int Error when any target failed, otherwise success.
      */
-    public function execute(Input $input, Output $output): int
+    public function execute(Input $input, ConsoleWriterInterface $console): int
     {
         $result = $this->synchronizer->synchronize(
             $input->root,
             $this->inspector->scopes($input->root),
-            $output,
+            $console,
         );
 
         return $result->hasErrors ? ExitCode::ERROR : ExitCode::SUCCESS;

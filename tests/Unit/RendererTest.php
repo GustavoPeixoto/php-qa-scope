@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Renderer\PhpCodeSnifferRenderer;
 use GustavoPeixoto\PhpQaScope\Renderer\PhpCsFixerRenderer;
 use GustavoPeixoto\PhpQaScope\Renderer\PhpStanRenderer;
 use GustavoPeixoto\PhpQaScope\Renderer\RendererRegistry;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 
 /**
  * Covers native configuration renderers and their registries.
@@ -22,7 +23,7 @@ final class RendererTest extends TestCase
      */
     public function testRendersPhpCodeSnifferBlock(): void
     {
-        $block = (new PhpCodeSnifferRenderer())->render(new ToolScope(['src', 'tests'], ['tests/fixtures/**']));
+        $block = PhpCodeSnifferRenderer::default()->render(new ToolScope(['src', 'tests'], ['tests/fixtures/**']));
 
         self::assertStringContainsString('    <file>.</file>', $block);
         self::assertStringContainsString('    <arg name="extensions" value="php"/>', $block);
@@ -34,7 +35,7 @@ final class RendererTest extends TestCase
      */
     public function testRendersPhpStanBlock(): void
     {
-        $block = (new PhpStanRenderer())->render(new ToolScope(['src', 'tests'], ['src/Compatibility.php']));
+        $block = PhpStanRenderer::default()->render(new ToolScope(['src', 'tests'], ['src/Compatibility.php']));
 
         self::assertSame(<<<'NEON'
     paths:
@@ -52,7 +53,7 @@ NEON, $block);
      */
     public function testRendersPhpCsFixerBlock(): void
     {
-        $block = (new PhpCsFixerRenderer())->render(
+        $block = PhpCsFixerRenderer::default()->render(
             new ToolScope(['scripts/single.php', 'src'], ['**/*Generated.php']),
         );
 
@@ -68,14 +69,14 @@ NEON, $block);
     public function testRegistersRenderersAndNativeTargets(): void
     {
         $renderers = RendererRegistry::default();
-        $targets = new TargetRegistry();
+        $targets = TargetRegistry::default();
 
-        self::assertInstanceOf(PhpCodeSnifferRenderer::class, $renderers->get('phpcs'));
-        self::assertSame('phpcs.xml', $targets->get('phpcs')->path);
-        self::assertSame('phpstan.neon', $targets->get('phpstan')->path);
-        self::assertSame('php-cs-fixer.dist.php', $targets->get('php-cs-fixer')->path);
-        self::assertSame('<!-- php-qa-scope:%s -->', $targets->get('phpcs')->marker);
-        self::assertSame('# php-qa-scope:%s', $targets->get('phpstan')->marker);
-        self::assertSame('// php-qa-scope:%s', $targets->get('php-cs-fixer')->marker);
+        self::assertInstanceOf(PhpCodeSnifferRenderer::class, $renderers->get(Tool::Phpcs));
+        self::assertSame('phpcs.xml', $targets->get(Tool::Phpcs)->path);
+        self::assertSame('phpstan.neon', $targets->get(Tool::Phpstan)->path);
+        self::assertSame('php-cs-fixer.dist.php', $targets->get(Tool::PhpCsFixer)->path);
+        self::assertSame('<!-- php-qa-scope:%s -->', $targets->get(Tool::Phpcs)->marker);
+        self::assertSame('# php-qa-scope:%s', $targets->get(Tool::Phpstan)->marker);
+        self::assertSame('// php-qa-scope:%s', $targets->get(Tool::PhpCsFixer)->marker);
     }
 }

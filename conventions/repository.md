@@ -12,6 +12,8 @@ The repository root is also the Composer package root for `gustavo-peixoto/php-q
 
 Treat `README.md` as the public package entrypoint. It should primarily serve Packagist users and package consumers.
 
+CLI commands and YAML configuration are the supported consumer interfaces. PHP classes and their public methods are internal implementation details; they do not establish a supported public programmatic API or a compatibility commitment for consumers calling those classes directly.
+
 Treat `AGENTS.md` as the operational entrypoint for agents and collaborators. It should index canonical conventions rather than duplicate them.
 
 ## Repository Topology
@@ -48,6 +50,8 @@ Keep Composer public executables in `bin/`. Put internal repository automation i
 Package motivation, package behavior, user-facing installation, consumer commands, supported QA tools, configuration semantics, and public usage examples belong in `README.md` or durable OpenSpec artifacts when a change needs planning.
 
 Contributor-only setup, local QA commands, internal implementation layout, and repository operation rules belong in conventions rather than in `README.md`.
+
+Durable internal PHP composition rules belong in [conventions/php-composition.md](php-composition.md). Refactoring-specific migration details belong in the corresponding OpenSpec change artifacts. Keep the README focused on the supported consumer interfaces rather than internal constructor or registry usage.
 
 Repository operation rules belong in conventions:
 

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
 use GustavoPeixoto\PhpQaScope\Scope\ScopeInitializer;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
 use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -21,15 +22,15 @@ final class ScopeInitializerTest extends TestCase
     public function testCreatesDefaultsForProvidedTools(): void
     {
         $root = $this->tempRoot();
-        $tools = ['phpstan' => (new TargetRegistry())->get('phpstan')];
+        $tools = ['phpstan' => TargetRegistry::default()->get(Tool::Phpstan)];
         (new ScopeInitializer())->create($root, $tools);
         $config = (new ScopeLoader())->load($root . '/php-qa-scope.yml');
 
         self::assertSame(['src'], $config->include);
         self::assertSame([], $config->exclude);
-        self::assertSame(['phpstan'], $config->managedTools());
-        self::assertSame([], $config->tool('phpstan')->include);
-        self::assertSame([], $config->tool('phpstan')->exclude);
+        self::assertSame([Tool::Phpstan], $config->managedTools());
+        self::assertSame([], $config->tool(Tool::Phpstan)->include);
+        self::assertSame([], $config->tool(Tool::Phpstan)->exclude);
         self::assertSame(
             "include:\n  - src\nexclude: []\ntools:\n  phpstan:\n    include: []\n    exclude: []\n",
             file_get_contents($root . '/php-qa-scope.yml'),
@@ -46,10 +47,10 @@ final class ScopeInitializerTest extends TestCase
         foreach (['phpcs.xml', 'phpstan.neon', 'php-cs-fixer.dist.php'] as $file) {
             $this->put($root, $file, 'configuration');
         }
-        (new ScopeInitializer())->create($root, (new TargetRegistry())->discover($root));
+        (new ScopeInitializer())->create($root, TargetRegistry::default()->discover($root));
         $config = (new ScopeLoader())->load($root . '/php-qa-scope.yml');
 
-        self::assertSame(['phpcs', 'phpstan', 'php-cs-fixer'], $config->managedTools());
+        self::assertSame(Tool::cases(), $config->managedTools());
         foreach ($config->managedTools() as $tool) {
             self::assertSame([], $config->tool($tool)->include);
             self::assertSame([], $config->tool($tool)->exclude);

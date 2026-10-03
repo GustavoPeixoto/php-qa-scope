@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Synchronizer;
 
-use GustavoPeixoto\PhpQaScope\Cli\Output;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface;
 use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
+use GustavoPeixoto\PhpQaScope\Tool;
 use Throwable;
 
 /**
@@ -31,19 +33,20 @@ final class Synchronizer
      *
      * @param string $root Project root containing native files.
      * @param array<string, ToolScope> $scopes Effective scopes indexed by tool.
-     * @param Output $output Destination for target statuses and errors.
+     * @param ConsoleWriterInterface $console Destination for target statuses and errors.
      * @return SynchronizerResult Aggregate errors and successfully committed changes.
      */
-    public function synchronize(string $root, array $scopes, Output $output): SynchronizerResult
+    public function synchronize(string $root, array $scopes, ConsoleWriterInterface $console): SynchronizerResult
     {
         $hasErrors = false;
         $changed = false;
 
-        foreach ($scopes as $tool => $scope) {
+        foreach ($scopes as $toolName => $scope) {
+            $tool = Tool::from($toolName);
             $file = $this->inspector->target($tool)->path;
 
             try {
-                if ($this->syncTarget($root, $tool, $scope, $output)) {
+                if ($this->syncTarget($root, $tool, $scope, $console)) {
                     $changed = true;
                 }
             } catch (Throwable $error) {
@@ -51,7 +54,7 @@ final class Synchronizer
                 if (str_starts_with($reason, "$file: ")) {
                     $reason = substr($reason, strlen($file) + 2);
                 }
-                $output->errorLine("ERROR $file: $reason");
+                $console->errorLine("ERROR $file: $reason");
                 $hasErrors = true;
             }
         }
@@ -63,12 +66,12 @@ final class Synchronizer
      * Releases one target's file data before the next target is inspected.
      *
      * @param string $root Project root containing native files.
-     * @param string $tool Managed tool name.
+     * @param Tool $tool Managed tool name.
      * @param ToolScope $scope Effective scope for this tool.
-     * @param Output $output Destination for the target status.
+     * @param ConsoleWriterInterface $console Destination for the target status.
      * @return bool Whether the target was successfully updated.
      */
-    private function syncTarget(string $root, string $tool, ToolScope $scope, Output $output): bool
+    private function syncTarget(string $root, Tool $tool, ToolScope $scope, ConsoleWriterInterface $console): bool
     {
         $inspection = $this->inspector->inspect($root, $tool, $scope);
         if ($inspection->changed) {
@@ -79,7 +82,7 @@ final class Synchronizer
                 $inspection->replacement(),
             );
         }
-        $output->line(($inspection->changed ? 'UPDATED ' : 'OK ') . $inspection->target->path);
+        $console->line(($inspection->changed ? 'UPDATED ' : 'OK ') . $inspection->target->path);
 
         return $inspection->changed;
     }

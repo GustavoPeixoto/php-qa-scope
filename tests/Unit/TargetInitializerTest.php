@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocator;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;
-use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
+use GustavoPeixoto\PhpQaScope\Target\TargetInitializer;
 use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
+use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -26,18 +28,18 @@ final class TargetInitializerTest extends TestCase
         $before = "parameters:\r\n    level: 6\r\n";
         $this->put($root, 'phpstan.neon', $before);
         chmod($root . '/phpstan.neon', 0640);
-        $preparer = $this->preparer();
+        $targetInitializer = $this->preparer();
 
-        self::assertTrue($preparer->insert($root, 'phpstan'));
+        self::assertTrue($targetInitializer->insert($root, Tool::Phpstan));
         $after = (string) file_get_contents($root . '/phpstan.neon');
         $pair = "    # php-qa-scope:start\r\n    # php-qa-scope:end\r\n";
         self::assertSame($before, str_replace($pair, '', $after));
         self::assertSame(0640, fileperms($root . '/phpstan.neon') & 0777);
-        $block = (new ManagedBlock())->locate($after, (new TargetRegistry())->get('phpstan'));
+        $block = (new BlockLocator())->locate($after, TargetRegistry::default()->get(Tool::Phpstan));
         self::assertSame('', $block->content);
 
         $inode = fileinode($root . '/phpstan.neon');
-        self::assertFalse($preparer->insert($root, 'phpstan'));
+        self::assertFalse($targetInitializer->insert($root, Tool::Phpstan));
         clearstatcache(true, $root . '/phpstan.neon');
         self::assertSame($inode, fileinode($root . '/phpstan.neon'));
     }
@@ -51,7 +53,7 @@ final class TargetInitializerTest extends TestCase
         $before = "parameters:\n    # php-qa-scope:start\n    paths: [app]\n    # php-qa-scope:end\n";
         $this->put($root, 'phpstan.neon', $before);
 
-        self::assertFalse($this->preparer()->insert($root, 'phpstan'));
+        self::assertFalse($this->preparer()->insert($root, Tool::Phpstan));
         self::assertSame($before, file_get_contents($root . '/phpstan.neon'));
     }
 
@@ -75,7 +77,7 @@ final class TargetInitializerTest extends TestCase
             $this->put($root, 'phpstan.neon', $before);
 
             try {
-                $this->preparer()->insert($root, 'phpstan');
+                $this->preparer()->insert($root, Tool::Phpstan);
                 self::fail('An invalid marker state must not be repaired.');
             } catch (RuntimeException $error) {
                 self::assertStringContainsString('phpstan.neon:', $error->getMessage());
@@ -92,10 +94,15 @@ final class TargetInitializerTest extends TestCase
         $root = $this->tempRoot();
         $before = "parameters:\n    level: 6\n";
         $this->put($root, 'phpstan.neon', $before);
-        $inserter = new TargetInitializer(new InsertionLocatorRegistry([]));
+        $targetInitializer = new TargetInitializer(
+            new InsertionLocatorRegistry([]),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+            writer: new TargetWriter(),
+        );
 
         try {
-            $inserter->insert($root, 'phpstan');
+            $targetInitializer->insert($root, Tool::Phpstan);
             self::fail('A missing insertion strategy must be reported.');
         } catch (RuntimeException $error) {
             self::assertStringContainsString('phpstan.neon:', $error->getMessage());
@@ -128,6 +135,11 @@ final class TargetInitializerTest extends TestCase
             }
         };
 
-        return new TargetInitializer(locators: new InsertionLocatorRegistry(['phpstan' => $locator]));
+        return new TargetInitializer(
+            locators: new InsertionLocatorRegistry(['phpstan' => $locator]),
+            targets: TargetRegistry::default(),
+            blockLocator: new BlockLocator(),
+            writer: new TargetWriter(),
+        );
     }
 }

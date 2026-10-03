@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Target;
 
+use GustavoPeixoto\PhpQaScope\Block\BlockLocator;
 use GustavoPeixoto\PhpQaScope\InsertionLocator\InsertionLocatorRegistry;
-use GustavoPeixoto\PhpQaScope\Block\ManagedBlock;
-use GustavoPeixoto\PhpQaScope\Target\TargetWriter;
-use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -20,30 +19,45 @@ final class TargetInitializer
      *
      * @param InsertionLocatorRegistry $locators Insertion strategies indexed by tool.
      * @param TargetRegistry $targets Native filenames, syntax, and indentation.
-     * @param ManagedBlock $blocks Strict validator for existing and inserted pairs.
-     * @param TargetWriter $files Safe native reads and replacements.
+     * @param BlockLocator $blockLocator Strict validator for existing and inserted pairs.
+     * @param TargetWriter $writer Safe native reads and replacements.
      */
     public function __construct(
         private readonly InsertionLocatorRegistry $locators,
-        private readonly TargetRegistry $targets = new TargetRegistry(),
-        private readonly ManagedBlock $blocks = new ManagedBlock(),
-        private readonly TargetWriter $files = new TargetWriter(),
+        private readonly TargetRegistry $targets,
+        private readonly BlockLocator $blockLocator,
+        private readonly TargetWriter $writer,
     ) {
+    }
+
+    /**
+     * Builds a standalone marker preparer for the supported native tools.
+     *
+     * @return self Service configured with built-in collaborators.
+     */
+    public static function default(): self
+    {
+        return new self(
+            InsertionLocatorRegistry::default(),
+            TargetRegistry::default(),
+            new BlockLocator(),
+            new TargetWriter(),
+        );
     }
 
     /**
      * Adds an absent pair and leaves every pre-existing valid pair unchanged.
      *
      * @param string $root Project root containing native configuration files.
-     * @param string $tool Managed tool whose markers are being prepared.
+     * @param Tool $tool Managed tool whose markers are being prepared.
      * @return bool Whether an empty pair was successfully written.
      */
-    public function insert(string $root, string $tool): bool
+    public function insert(string $root, Tool $tool): bool
     {
         $target = $this->targets->get($tool);
-        $before = $this->files->read($root, $target->path);
+        $before = $this->writer->read($root, $target->path);
         if (str_contains($before, 'php-qa-scope:start') || str_contains($before, 'php-qa-scope:end')) {
-            $this->blocks->locate($before, $target);
+            $this->blockLocator->locate($before, $target);
 
             return false;
         }
@@ -73,8 +87,8 @@ final class TargetInitializer
             . $eol
         ;
         $after = substr_replace($before, $pair, $offset, 0);
-        $this->blocks->locate($after, $target);
-        $this->files->write($root, $target->path, $before, $after, 'init');
+        $this->blockLocator->locate($after, $target);
+        $this->writer->write($root, $target->path, $before, $after, 'init');
 
         return true;
     }

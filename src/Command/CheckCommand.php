@@ -6,9 +6,10 @@ namespace GustavoPeixoto\PhpQaScope\Command;
 
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
 use GustavoPeixoto\PhpQaScope\Cli\Input;
-use GustavoPeixoto\PhpQaScope\Cli\Output;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriterInterface;
 use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Target\TargetInspector;
+use GustavoPeixoto\PhpQaScope\Tool;
 use Throwable;
 
 /**
@@ -39,23 +40,23 @@ final class CheckCommand implements Command
      * Inspects all managed targets and aggregates their results.
      *
      * @param Input $input Parsed command input.
-     * @param Output $output Output writer for statuses and guidance.
+     * @param ConsoleWriterInterface $console Destination for statuses and guidance.
      * @return int Exit code for errors, drift, or success.
      */
-    public function execute(Input $input, Output $output): int
+    public function execute(Input $input, ConsoleWriterInterface $console): int
     {
         $scopes = $this->inspector->scopes($input->root);
         $hasErrors = false;
         $hasDrift = false;
 
         foreach ($scopes as $tool => $scope) {
-            $result = $this->checkTarget($input->root, $tool, $scope, $output);
+            $result = $this->checkTarget($input->root, Tool::from($tool), $scope, $console);
             $hasErrors = $hasErrors || $result === ExitCode::ERROR;
             $hasDrift = $hasDrift || $result === ExitCode::DRIFT;
         }
 
         if ($hasDrift) {
-            $output->line('Run vendor/bin/php-qa-scope sync to synchronize the blocks.');
+            $console->line('Run vendor/bin/php-qa-scope sync to synchronize the blocks.');
         }
 
         return $hasErrors ? ExitCode::ERROR : ($hasDrift ? ExitCode::DRIFT : ExitCode::SUCCESS);
@@ -65,18 +66,18 @@ final class CheckCommand implements Command
      * Inspects one target and releases its file data before the next target.
      *
      * @param string $root Project root containing target files.
-     * @param string $tool Managed tool name.
+     * @param Tool $tool Managed tool name.
      * @param ToolScope $scope Effective scope for the tool.
-     * @param Output $output Output writer for the target result.
+     * @param ConsoleWriterInterface $console Destination for the target result.
      * @return int Target result as a command exit code.
      */
-    private function checkTarget(string $root, string $tool, ToolScope $scope, Output $output): int
+    private function checkTarget(string $root, Tool $tool, ToolScope $scope, ConsoleWriterInterface $console): int
     {
         $file = $this->inspector->target($tool)->path;
 
         try {
             $changed = $this->inspector->inspect($root, $tool, $scope)->changed;
-            $output->line(($changed ? 'OUT-OF-SYNC ' : 'OK ') . $file);
+            $console->line(($changed ? 'OUT-OF-SYNC ' : 'OK ') . $file);
 
             return $changed ? ExitCode::DRIFT : ExitCode::SUCCESS;
         } catch (Throwable $error) {
@@ -84,7 +85,7 @@ final class CheckCommand implements Command
             if (str_starts_with($reason, "$file: ")) {
                 $reason = substr($reason, strlen($file) + 2);
             }
-            $output->errorLine("ERROR $file: $reason");
+            $console->errorLine("ERROR $file: $reason");
 
             return ExitCode::ERROR;
         }

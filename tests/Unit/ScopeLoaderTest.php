@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
-use GustavoPeixoto\PhpQaScope\Scope\EffectiveScope;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator;
 use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -31,9 +32,9 @@ final class ScopeLoaderTest extends TestCase
 
         $config = (new ScopeLoader())->load($root . '/php-qa-scope.yml');
 
-        self::assertSame(['phpstan'], $config->managedTools());
+        self::assertSame([Tool::Phpstan], $config->managedTools());
         self::assertSame(['src', 'tests'], $config->include);
-        self::assertSame(['bin'], $config->tool('phpstan')->include);
+        self::assertSame(['bin'], $config->tool(Tool::Phpstan)->include);
     }
 
     /**
@@ -51,8 +52,8 @@ final class ScopeLoaderTest extends TestCase
             ['include' => ['src'], 'exclude' => [], 'tools' => ['phpstan' => null]],
         ];
 
-        foreach ($invalidScopes as $scope) {
-            $this->put($root, 'php-qa-scope.yml', Yaml::dump($scope, 5));
+        foreach ($invalidScopes as $scopes) {
+            $this->put($root, 'php-qa-scope.yml', Yaml::dump($scopes, 5));
 
             $exception = null;
 
@@ -62,7 +63,7 @@ final class ScopeLoaderTest extends TestCase
                 $exception = $error;
             }
 
-            self::assertInstanceOf(RuntimeException::class, $exception, var_export($scope, true));
+            self::assertInstanceOf(RuntimeException::class, $exception, var_export($scopes, true));
         }
     }
 
@@ -81,9 +82,24 @@ final class ScopeLoaderTest extends TestCase
         ], 5));
 
         $config = (new ScopeLoader())->load($root . '/php-qa-scope.yml');
-        $scope = (new EffectiveScope())->calculate($config);
+        $scopes = ScopeCalculator::default()->calculate($config);
 
-        self::assertSame(['bin', 'src', 'tests'], $scope['phpstan']->include);
-        self::assertSame(['**/legacy/**', 'tests/fixtures/**'], $scope['phpstan']->exclude);
+        self::assertSame(['bin', 'src', 'tests'], $scopes['phpstan']->include);
+        self::assertSame(['**/legacy/**', 'tests/fixtures/**'], $scopes['phpstan']->exclude);
+    }
+    /**
+     * Retains the external diagnostic when an unknown key cannot become a tool case.
+     */
+    public function testPreservesUnknownToolDiagnostic(): void
+    {
+        $root = $this->tempRoot();
+        $this->put($root, 'php-qa-scope.yml', Yaml::dump([
+            'include' => ['src'],
+            'exclude' => [],
+            'tools' => ['unknown-tool' => ['include' => [], 'exclude' => []]],
+        ], 5));
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("tools: unknown key 'unknown-tool'.");
+        (new ScopeLoader())->load($root . '/php-qa-scope.yml');
     }
 }

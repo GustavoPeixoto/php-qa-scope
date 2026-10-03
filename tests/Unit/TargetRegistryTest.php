@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Tests\Unit;
 
+use GustavoPeixoto\PhpQaScope\Target\TargetFile;
 use GustavoPeixoto\PhpQaScope\Target\TargetRegistry;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
+use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
 
 /**
@@ -18,14 +20,14 @@ final class TargetRegistryTest extends TestCase
      */
     public function testDiscoversEveryToolCombination(): void
     {
-        $registry = new TargetRegistry();
+        $registry = TargetRegistry::default();
         $tools = ['phpcs', 'phpstan', 'php-cs-fixer'];
         for ($mask = 1; $mask < 8; ++$mask) {
             $root = $this->tempRoot();
             $expected = [];
             foreach ($tools as $index => $tool) {
                 if (($mask & (1 << $index)) !== 0) {
-                    $this->put($root, $registry->get($tool)->path, 'configuration');
+                    $this->put($root, $registry->get(Tool::from($tool))->path, 'configuration');
                     $expected[] = $tool;
                 }
             }
@@ -47,7 +49,7 @@ final class TargetRegistryTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('No supported QA configuration');
-        (new TargetRegistry())->discover($root);
+        TargetRegistry::default()->discover($root);
     }
 
     /**
@@ -56,6 +58,41 @@ final class TargetRegistryTest extends TestCase
     public function testRejectsAnEmptyRoot(): void
     {
         $this->expectException(RuntimeException::class);
-        (new TargetRegistry())->discover($this->tempRoot());
+        TargetRegistry::default()->discover($this->tempRoot());
+    }
+    /**
+     * Discovers the caller's supplied path rather than replacing it with a built-in target.
+     */
+    public function testUsesCustomTargetDefinition(): void
+    {
+        $root = $this->tempRoot();
+        $target = new TargetFile(Tool::Phpstan, 'custom.neon', '# scope:%s', '');
+        $registry = new TargetRegistry([Tool::Phpstan->value => $target]);
+        $this->put($root, 'custom.neon', 'configuration');
+
+        self::assertSame($target, $registry->get(Tool::Phpstan));
+        self::assertSame(['phpstan' => $target], $registry->discover($root));
+        self::assertSame('phpstan.neon', TargetRegistry::default()->get(Tool::Phpstan)->path);
+    }
+
+    /**
+     * Rejects inconsistent mappings before a target can be discovered or written.
+     */
+    public function testRejectsMismatchedTargetIdentity(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Target key 'phpcs' does not match tool 'phpstan'.");
+        new TargetRegistry(['phpcs' => new TargetFile(Tool::Phpstan, 'custom.neon', '# scope:%s', '')]);
+    }
+
+    /**
+     * Reports missing registrations without looking up a built-in fallback.
+     */
+    public function testRejectsMissingRegistration(): void
+    {
+        $registry = new TargetRegistry([]);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("No target registered for 'phpstan'.");
+        $registry->get(Tool::Phpstan);
     }
 }

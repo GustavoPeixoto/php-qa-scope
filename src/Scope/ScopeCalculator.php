@@ -11,15 +11,25 @@ use RuntimeException;
 /**
  * Calculates per-tool scopes after applying global and local configuration.
  */
-final class EffectiveScope
+final class ScopeCalculator
 {
     /**
      * Creates the calculator with the pattern compiler used for exclusions.
      *
-     * @param PatternCompiler $patterns Compiler for supported exclude patterns.
+     * @param PatternCompiler $patternCompiler Compiler for supported exclude patterns.
      */
-    public function __construct(private readonly PatternCompiler $patterns = new PatternCompiler())
+    public function __construct(private readonly PatternCompiler $patternCompiler)
     {
+    }
+
+    /**
+     * Builds a standalone service with the supported pattern compiler.
+     *
+     * @return self Service configured with built-in collaborators.
+     */
+    public static function default(): self
+    {
+        return new self(new PatternCompiler());
     }
 
     /**
@@ -42,7 +52,7 @@ final class EffectiveScope
             }
 
             foreach ($exclude as $pattern) {
-                $this->patterns->compile($pattern);
+                $this->patternCompiler->compile($pattern);
             }
 
             $include = $this->compactIncludes($include);
@@ -52,10 +62,10 @@ final class EffectiveScope
             ));
 
             if ($include === []) {
-                throw new RuntimeException("$tool: effective include cannot be empty.");
+                throw new RuntimeException(sprintf('%s: effective include cannot be empty.', $tool->value));
             }
 
-            $result[$tool] = new ToolScope($include, $exclude);
+            $result[$tool->value] = new ToolScope($include, $exclude);
         }
 
         return $result;
@@ -111,7 +121,7 @@ final class EffectiveScope
     private function isExcludedPath(string $path, array $exclude): bool
     {
         foreach ($exclude as $pattern) {
-            if ($this->patterns->matchesPath($pattern, $path)) {
+            if ($this->patternCompiler->matchesPath($pattern, $path)) {
                 return true;
             }
         }

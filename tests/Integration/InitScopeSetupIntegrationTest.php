@@ -6,7 +6,9 @@ namespace GustavoPeixoto\PhpQaScope\Tests\Integration;
 
 use GustavoPeixoto\PhpQaScope\Application;
 use GustavoPeixoto\PhpQaScope\Cli\ExitCode;
-use GustavoPeixoto\PhpQaScope\Scope\EffectiveScope;
+use GustavoPeixoto\PhpQaScope\Console\Console;
+use GustavoPeixoto\PhpQaScope\Console\ConsoleWriter;
+use GustavoPeixoto\PhpQaScope\Scope\ScopeCalculator;
 use GustavoPeixoto\PhpQaScope\Scope\ScopeLoader;
 use GustavoPeixoto\PhpQaScope\Tests\TestCase;
 
@@ -31,7 +33,7 @@ final class InitScopeSetupIntegrationTest extends TestCase
         $inode = fileinode($root . '/php-qa-scope.yml');
         [$code] = $this->runApp(Application::default(), ['php-qa-scope', 'init'], $root);
         self::assertSame(ExitCode::SUCCESS, $code);
-        $scopes = (new EffectiveScope())->calculate((new ScopeLoader())->load($root . '/php-qa-scope.yml'));
+        $scopes = ScopeCalculator::default()->calculate((new ScopeLoader())->load($root . '/php-qa-scope.yml'));
 
         self::assertSame(['phpstan'], array_keys($scopes));
         self::assertSame(['app', 'tests'], $scopes['phpstan']->include);
@@ -176,7 +178,7 @@ final class InitScopeSetupIntegrationTest extends TestCase
         $stderr = fopen('php://memory', 'w+');
 
         try {
-            $code = $app->run($argv, $root, $stdout, $stderr);
+            $code = $app->run($argv, new Console(new ConsoleWriter($stdout, $stderr)), $root);
             rewind($stdout);
             rewind($stderr);
 

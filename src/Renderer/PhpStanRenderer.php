@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Renderer;
 
-use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 use GustavoPeixoto\PhpQaScope\Glob\PatternCompiler;
+use GustavoPeixoto\PhpQaScope\Scope\ToolScope;
 
 /**
  * Renders managed PHPStan path configuration.
@@ -15,10 +15,20 @@ final class PhpStanRenderer implements Renderer
     /**
      * Creates the renderer with the pattern compiler used for excludes.
      *
-     * @param PatternCompiler $patterns Compiler for supported exclude patterns.
+     * @param PatternCompiler $patternCompiler Compiler for supported exclude patterns.
      */
-    public function __construct(private readonly PatternCompiler $patterns = new PatternCompiler())
+    public function __construct(private readonly PatternCompiler $patternCompiler)
     {
+    }
+
+    /**
+     * Builds a standalone service with the supported pattern compiler.
+     *
+     * @return self Service configured with built-in collaborators.
+     */
+    public static function default(): self
+    {
+        return new self(new PatternCompiler());
     }
 
     /**
@@ -39,7 +49,7 @@ final class PhpStanRenderer implements Renderer
 
         $excludes = [];
         foreach ($scope->exclude as $pattern) {
-            $compiled = $this->patterns->compile($pattern);
+            $compiled = $this->patternCompiler->compile($pattern);
             foreach ($compiled->phpStanPaths as $path) {
                 $excludes[] = "            - '$path'" . ($compiled->optionalForPhpStan ? ' (?)' : '');
             }

@@ -12,7 +12,7 @@ use RuntimeException;
 final class CommandRegistry
 {
     /** @var array<string, Command> Commands indexed by CLI name. */
-    private array $commands = [];
+    private readonly array $commands;
 
     /**
      * Registers the commands that may be dispatched.
@@ -21,9 +21,21 @@ final class CommandRegistry
      */
     public function __construct(array $commands)
     {
+        $registered = [];
         foreach ($commands as $command) {
-            $this->commands[$command->name()] = $command;
+            $registered[$command->name()] = $command;
         }
+        $this->commands = $registered;
+    }
+
+    /**
+     * Formats usage from the registered command names in registration order.
+     *
+     * @return string Usage text for this registry's supported commands.
+     */
+    public function usage(): string
+    {
+        return sprintf('Usage: php-qa-scope <%s>', implode('|', array_keys($this->commands)));
     }
 
     /**
@@ -34,6 +46,6 @@ final class CommandRegistry
      */
     public function get(string $name): Command
     {
-        return $this->commands[$name] ?? throw new RuntimeException('Usage: php-qa-scope <init|sync|check>');
+        return $this->commands[$name] ?? throw new RuntimeException($this->usage());
     }
 }
