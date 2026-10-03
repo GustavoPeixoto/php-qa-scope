@@ -51,9 +51,6 @@ RUN python3 -m venv /opt/headroom \
     && /opt/headroom/bin/pip install --no-cache-dir --only-binary=headroom-ai 'headroom-ai[proxy]==0.39.1' \
     && ln -s /opt/headroom/bin/headroom /usr/local/bin/headroom
 
-ENV HEADROOM_SAVINGS_PROFILE=coding \
-    HEADROOM_BEACON=off
-
 COPY docker/dev/bin/ /usr/local/bin/
 COPY docker/dev/.codex/ /usr/local/.codex/
 RUN chmod +x \

@@ -24,3 +24,4 @@ Conventions are durable documents in `conventions/` that define cross-cutting pr
 | [conventions/environment.md](conventions/environment.md) | Environments, local infrastructure, Docker, Compose, Dev Containers, `dev`, and PHP package tooling. |
 | [conventions/artifacts.md](conventions/artifacts.md) | Durable and transient artifacts, inputs, handoffs, drafts, `tmp/`, and sources of truth. |
 | [conventions/context-mode.md](conventions/context-mode.md) | Using context-mode, `ctx_*` tools, Codex hooks, and preserving the context window. |
+| [conventions/headroom.md](conventions/headroom.md) | Headroom installation, proxy and MCP configuration, Codex routing, and verification. |

@@ -54,4 +54,5 @@ Repository operation rules belong in conventions:
 - environment and Dev Container usage belong in `conventions/environment.md`;
 - OpenSpec workflow belongs in `conventions/workflow.md`;
 - artifact durability and `tmp/` usage belong in `conventions/artifacts.md`;
-- context-mode and Codex hook usage belong in `conventions/context-mode.md`.
+- context-mode and Codex hook usage belong in `conventions/context-mode.md`;
+- Headroom installation, proxy and MCP configuration, Codex routing, and verification belong in `conventions/headroom.md`.
