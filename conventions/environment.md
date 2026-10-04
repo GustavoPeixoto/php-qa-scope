@@ -89,21 +89,15 @@ The package's QA tools are development dependencies. Install them with `composer
 | PHPCS / PHPCBF | Check / fix coding standard | `phpcs.xml` | `composer sniffer-check`, `composer sniffer-fix` |
 | PHP-CS-Fixer | Check / apply formatting | `php-cs-fixer.dist.php` | `composer fixer-check`, `composer fixer-fix` |
 | PHPStan | Static analysis | `phpstan.neon` | `composer stan-check` |
-| PHPMD | Detect design and complexity issues | `phpmd.xml` | Manual execution |
+| PHPMD | Detect design and complexity issues | `phpmd.xml` | `composer md-check` |
 
-PHPMD remains outside `php-qa-scope`. Example manual execution, with an independent selection chosen by the developer:
+`composer md-check` analyzes `src`, `tests`, and `bin`. PHPMD is not managed by `php-qa-scope`; its path selection is defined independently in the Composer script. For a custom selection, run it manually:
 
 ```sh
 vendor/bin/phpmd bin text phpmd.xml
 ```
 
-The current PHP-CS-Fixer configuration enables `declare_strict_types`, but uses `setRiskyAllowed(false)`. Fixer rejects that combination. To explicitly allow that rule for one check, use:
-
-```sh
-composer fixer-check -- --allow-risky=yes
-```
-
-The permanent decision to enable risky rules or remove that rule belongs to the Fixer configuration. `php-qa-scope` does not modify that policy.
+The PHP-CS-Fixer configuration uses `setRiskyAllowed(false)` and does not enable `declare_strict_types`. Rule selection and risky-rule policy belong to the Fixer configuration. `php-qa-scope` does not modify that policy.
 
 ## Convention Scope
 

@@ -82,11 +82,11 @@ final class PhpCsFixerRenderer implements Renderer
         }
 
         if ($scope->exclude !== []) {
-            $patternCompiler = array_map(
+            $regexFragments = array_map(
                 fn (string $pattern): string => $this->patternCompiler->compile($pattern)->regex,
                 $scope->exclude,
             );
-            $regex = '~^(?:' . implode('|', $patternCompiler) . ')~D';
+            $regex = '~^(?:' . implode('|', $regexFragments) . ')~D';
             $lines = [
                 ...$lines,
                 '$finder = new CallbackFilterIterator(',

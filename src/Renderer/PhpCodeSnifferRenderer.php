@@ -45,7 +45,7 @@ final class PhpCodeSnifferRenderer implements Renderer
             '    <file>.</file>',
             '    <arg name="extensions" value="php"/>',
         ];
-        $patternCompiler = [
+        $excludePatterns = [
             '(?-i)^(?!' . $this->includeRegex($scope->include) . ').+',
             '(?-i)^(?!' . $this->traversalRegex($scope->include) . ').+/*',
             ...$this->hiddenDirectoryPatterns($scope->include),
@@ -53,7 +53,7 @@ final class PhpCodeSnifferRenderer implements Renderer
 
         foreach ($scope->exclude as $pattern) {
             $regex = $this->patternCompiler->compile($pattern)->regex;
-            $patternCompiler[] = '(?-i)^' . (str_ends_with($pattern, '/**') ? substr($regex, 0, -1) . '/*' : $regex);
+            $excludePatterns[] = '(?-i)^' . (str_ends_with($pattern, '/**') ? substr($regex, 0, -1) . '/*' : $regex);
         }
 
         foreach ($scope->include as $path) {
@@ -70,7 +70,7 @@ final class PhpCodeSnifferRenderer implements Renderer
             $lines[] = '    <file>' . $xml($path) . '</file>';
         }
 
-        foreach ($patternCompiler as $pattern) {
+        foreach ($excludePatterns as $pattern) {
             $lines[] = '    <exclude-pattern type="relative">' . $xml($pattern) . '</exclude-pattern>';
         }
 
