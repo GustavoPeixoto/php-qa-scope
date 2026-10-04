@@ -30,7 +30,7 @@
         "fixer-fix": "php-cs-fixer fix --config=php-cs-fixer.dist.php",
         "stan-check": "phpstan analyse",
         "md-check": "phpmd src,tests,bin text phpmd.xml",
-        "php-qa-scope": "@php bin/php-qa-scope"
+        "qa-scope": "@php bin/php-qa-scope"
     },
     "require": {
         "php": "^8.3 || ^8.4 || ^8.5",

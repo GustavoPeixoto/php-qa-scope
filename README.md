@@ -45,7 +45,7 @@ If you prefer Composer script forwarding, add this to your project:
 ```json
 {
     "scripts": {
-        "php-qa-scope": "php-qa-scope"
+        "qa-scope": "php-qa-scope"
     }
 }
 ```
@@ -53,9 +53,9 @@ If you prefer Composer script forwarding, add this to your project:
 Then run:
 
 ```sh
-composer php-qa-scope init
-composer php-qa-scope sync
-composer php-qa-scope check
+composer qa-scope init
+composer qa-scope sync
+composer qa-scope check
 ```
 
 ## Initialize
