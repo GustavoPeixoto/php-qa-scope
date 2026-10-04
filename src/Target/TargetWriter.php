@@ -61,19 +61,8 @@ final class TargetWriter
         }
 
         try {
-            $mode = is_file($path) ? fileperms($path) : false;
-            if (
-                $mode === false
-                || !chmod($temp, $mode & 0777)
-                || file_put_contents($temp, $after) !== strlen($after)
-            ) {
-                throw new RuntimeException("$file: failed to prepare the write.");
-            }
-
-            clearstatcache(true, $path);
-            if (is_link($path) || @file_get_contents($path) !== $before) {
-                throw new RuntimeException("$file: changed during $operation; run again.");
-            }
+            $this->prepareReplacement($path, $temp, $file, $after);
+            $this->assertUnchanged($path, $file, $before, $operation);
 
             if (!rename($temp, $path)) {
                 throw new RuntimeException("$file: failed to replace configuration; run check before retrying.");
@@ -82,6 +71,42 @@ final class TargetWriter
             if (is_file($temp)) {
                 unlink($temp);
             }
+        }
+    }
+
+    /**
+     * Prepares replacement bytes with the native file's existing permissions.
+     *
+     * @param string $path Absolute native configuration path.
+     * @param string $temp Temporary replacement file path.
+     * @param string $file Root-relative filename included in errors.
+     * @param string $after Complete replacement bytes.
+     */
+    private function prepareReplacement(string $path, string $temp, string $file, string $after): void
+    {
+        $mode = is_file($path) ? fileperms($path) : false;
+        if (
+            $mode === false
+            || !chmod($temp, $mode & 0777)
+            || file_put_contents($temp, $after) !== strlen($after)
+        ) {
+            throw new RuntimeException("$file: failed to prepare the write.");
+        }
+    }
+
+    /**
+     * Rejects changes or symbolic links immediately before native replacement.
+     *
+     * @param string $path Absolute native configuration path.
+     * @param string $file Root-relative filename included in errors.
+     * @param string $before Bytes observed during inspection.
+     * @param string $operation Command name included in concurrent-change errors.
+     */
+    private function assertUnchanged(string $path, string $file, string $before, string $operation): void
+    {
+        clearstatcache(true, $path);
+        if (is_link($path) || @file_get_contents($path) !== $before) {
+            throw new RuntimeException("$file: changed during $operation; run again.");
         }
     }
 }

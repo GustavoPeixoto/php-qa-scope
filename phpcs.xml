@@ -37,6 +37,9 @@
     </rule>
     <rule ref="Generic.PHP.DeprecatedFunctions"/>
     <rule ref="Generic.PHP.NoSilencedErrors"/>
+    <rule ref="Generic.PHP.NoSilencedErrors.Discouraged">
+        <severity>0</severity>
+    </rule>
     <rule ref="Generic.Files.LineLength">
         <properties>
             <property name="ignoreComments" type="boolean" value="true"/>

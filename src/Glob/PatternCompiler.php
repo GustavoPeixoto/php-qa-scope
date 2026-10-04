@@ -24,12 +24,7 @@ final class PatternCompiler
         $quote = static fn (string $path): string => preg_quote(PathValidator::literal($path), '~');
 
         if (str_starts_with($pattern, '**/*') && str_ends_with($pattern, '.php')) {
-            $suffix = substr($pattern, 4);
-            if ($suffix === '' || str_contains($suffix, '/')) {
-                throw new RuntimeException("Unsupported pattern: '$pattern'. See README.md.");
-            }
-
-            return new CompiledPattern('(?:[^/]+/){0,}[^/]{0,}' . $quote($suffix) . '$', ['*' . $suffix]);
+            return $this->compileSuffixPattern($pattern);
         }
 
         if (preg_match('~^(?:(.+)/)?\*\*/([^/]+)/\*\*$~D', $pattern, $parts) === 1) {
@@ -56,6 +51,25 @@ final class PatternCompiler
         }
 
         throw new RuntimeException("Unsupported pattern: '$pattern'. See README.md.");
+    }
+
+    /**
+     * Compiles a recursive PHP filename suffix pattern.
+     *
+     * @param string $pattern Recursive filename suffix pattern to compile.
+     *
+     * @return \GustavoPeixoto\PhpQaScope\Glob\CompiledPattern Pattern compiled for all supported renderers.
+     */
+    private function compileSuffixPattern(string $pattern): CompiledPattern
+    {
+        $suffix = substr($pattern, 4);
+        if ($suffix === '' || str_contains($suffix, '/')) {
+            throw new RuntimeException("Unsupported pattern: '$pattern'. See README.md.");
+        }
+
+        $quotedSuffix = preg_quote(PathValidator::literal($suffix), '~');
+
+        return new CompiledPattern('(?:[^/]+/){0,}[^/]{0,}' . $quotedSuffix . '$', ['*' . $suffix]);
     }
 
     /**

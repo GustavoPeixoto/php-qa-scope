@@ -30,6 +30,18 @@ final class PhpCsFixerInsertionLocator implements InsertionLocator
             throw new RuntimeException('could not recognize a conventional PHP opening tag.');
         }
 
+        $this->assertSupportedLayout($tokens);
+
+        return $this->preambleEnd($tokens, strlen($tokens[0][1]));
+    }
+
+    /**
+     * Rejects namespaces and mixed layouts that require manual marker placement.
+     *
+     * @param list<array{0: int, 1: string, 2: int}|string> $tokens Tokens from the parsed PHP file.
+     */
+    private function assertSupportedLayout(array $tokens): void
+    {
         $openingTags = 0;
         foreach ($tokens as $token) {
             if (!is_array($token)) {
@@ -45,8 +57,18 @@ final class PhpCsFixerInsertionLocator implements InsertionLocator
         if ($openingTags !== 1) {
             throw new RuntimeException('multiple PHP opening tags require manual marker placement.');
         }
+    }
 
-        $position = strlen($tokens[0][1]);
+    /**
+     * Finds the byte offset after the opening tag and leading declarations.
+     *
+     * @param list<array{0: int, 1: string, 2: int}|string> $tokens Tokens from the validated PHP file.
+     * @param int $position Byte offset immediately after the opening tag.
+     *
+     * @return int Offset before existing executable configuration code.
+     */
+    private function preambleEnd(array $tokens, int $position): int
+    {
         $anchor = $position;
         $index = 1;
         while (isset($tokens[$index])) {

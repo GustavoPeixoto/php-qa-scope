@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GustavoPeixoto\PhpQaScope\Scope;
 
+use Closure;
 use GustavoPeixoto\PhpQaScope\Glob\PathValidator;
 use GustavoPeixoto\PhpQaScope\Tool;
 use RuntimeException;
@@ -32,12 +33,12 @@ final class ScopeLoader
             }
         }
 
-        $globalInclude = $this->stringList($data['include'], 'include');
+        $globalInclude = $this->stringList($data['include'], 'include', PathValidator::validateLiteral(...));
         if ($globalInclude === []) {
             throw new RuntimeException('include: expected at least one path.');
         }
 
-        $globalExclude = $this->stringList($data['exclude'], 'exclude', false);
+        $globalExclude = $this->stringList($data['exclude'], 'exclude', PathValidator::excludePatternShape(...));
         $this->validateMap($data['tools'], array_column(Tool::cases(), 'value'), 'tools');
 
         $tools = [];
@@ -51,13 +52,13 @@ final class ScopeLoader
             }
 
             $tools[$identity->value] = new ToolScope(
-                $this->stringList($local['include'], "tools.$tool.include"),
-                $this->stringList($local['exclude'], "tools.$tool.exclude", false),
+                $this->stringList($local['include'], "tools.$tool.include", PathValidator::validateLiteral(...)),
+                $this->stringList($local['exclude'], "tools.$tool.exclude", PathValidator::excludePatternShape(...)),
             );
         }
 
         foreach ($globalInclude as $path) {
-            PathValidator::literal($path);
+            PathValidator::validateLiteral($path);
         }
 
         foreach ($globalExclude as $pattern) {
@@ -88,15 +89,15 @@ final class ScopeLoader
     }
 
     /**
-     * Normalizes and validates a YAML list of paths or patterns.
+     * Normalizes a YAML string list using the supplied entry validator.
      *
      * @param mixed $value Value expected to be a list of strings.
      * @param string $location Human-readable configuration location.
-     * @param bool $validateLiteral Whether entries must be literal paths instead of exclude patterns.
+     * @param \Closure(string): void $validator Validator that throws for invalid entries.
      *
      * @return list<string> Sorted unique list of validated entries.
      */
-    private function stringList(mixed $value, string $location, bool $validateLiteral = true): array
+    private function stringList(mixed $value, string $location, Closure $validator): array
     {
         if (!is_array($value) || !array_is_list($value)) {
             throw new RuntimeException("$location: expected a list of strings.");
@@ -107,11 +108,7 @@ final class ScopeLoader
                 throw new RuntimeException("$location: expected a non-empty path.");
             }
 
-            if ($validateLiteral) {
-                PathValidator::literal($item);
-            } else {
-                PathValidator::excludePatternShape($item);
-            }
+            $validator($item);
         }
 
         $value = array_values(array_unique($value));

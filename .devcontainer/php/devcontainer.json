@@ -56,6 +56,8 @@
           "**/vendor/**",
           "**/php-cs-fixer.dist.php"
         ],
+        "phpmd.rules": "${workspaceFolder}/phpmd.xml",
+        "phpmd.command": "${workspaceFolder}/vendor/bin/phpmd",
         "phpsab.excludeGlobs": [
           "**/vendor/**",
           "**/php-cs-fixer.dist.php"

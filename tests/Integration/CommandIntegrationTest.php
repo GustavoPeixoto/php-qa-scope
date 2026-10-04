@@ -238,7 +238,7 @@ final class CommandIntegrationTest extends TestCase
         $this->fixture($root, []);
         $this->put($root, 'phpstan.neon', 'native sentinel');
 
-        $invalidConfigurations = [
+        $configurations = [
             'tools: [invalid',
             Yaml::dump([
                 'include' => [],
@@ -252,7 +252,7 @@ final class CommandIntegrationTest extends TestCase
             ], 5),
         ];
 
-        foreach ($invalidConfigurations as $configuration) {
+        foreach ($configurations as $configuration) {
             $this->put($root, 'php-qa-scope.yml', $configuration);
             foreach (['check', 'sync'] as $command) {
                 [

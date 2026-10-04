@@ -20,6 +20,21 @@ final class PhpStanInsertionLocator implements InsertionLocator
      */
     public function locate(string $contents): int
     {
+        $offset = $this->parametersBodyOffset($contents);
+        $this->validateParametersIndentation(substr($contents, $offset));
+
+        return $offset;
+    }
+
+    /**
+     * Finds the body offset of one conventional top-level parameters block.
+     *
+     * @param string $contents Original NEON configuration bytes.
+     *
+     * @return int Offset immediately after the parameters header line.
+     */
+    private function parametersBodyOffset(string $contents): int
+    {
         $count = preg_match_all('~^(?:parameters|[\'\"]parameters[\'\"])[ \t]*:~m', $contents);
         if (
             $count !== 1
@@ -33,8 +48,17 @@ final class PhpStanInsertionLocator implements InsertionLocator
             throw new RuntimeException('could not recognize one top-level block-form parameters section.');
         }
 
-        $offset = $match[0][1] + strlen($match[0][0]);
-        $lines = preg_split('/\r?\n/', substr($contents, $offset));
+        return $match[0][1] + strlen($match[0][0]);
+    }
+
+    /**
+     * Checks the indentation of the first parameters body entry.
+     *
+     * @param string $body Configuration bytes after the parameters header.
+     */
+    private function validateParametersIndentation(string $body): void
+    {
+        $lines = preg_split('/\r?\n/', $body);
         foreach ($lines === false ? [] : $lines as $line) {
             $trimmed = trim($line);
             if ($trimmed === '' || str_starts_with($trimmed, '#')) {
@@ -49,7 +73,5 @@ final class PhpStanInsertionLocator implements InsertionLocator
 
             break;
         }
-
-        return $offset;
     }
 }

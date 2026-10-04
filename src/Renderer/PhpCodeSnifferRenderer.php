@@ -47,7 +47,7 @@ final class PhpCodeSnifferRenderer implements Renderer
         ];
         $patternCompiler = [
             '(?-i)^(?!' . $this->includeRegex($scope->include) . ').+',
-            '(?-i)^(?!' . $this->includeRegex($scope->include, true) . ').+/*',
+            '(?-i)^(?!' . $this->traversalRegex($scope->include) . ').+/*',
             ...$this->hiddenDirectoryPatterns($scope->include),
         ];
 
@@ -78,25 +78,38 @@ final class PhpCodeSnifferRenderer implements Renderer
     }
 
     /**
-     * Builds a regular expression matching included files or directories.
+     * Builds a regex matching explicitly included paths and directory descendants.
      *
      * @param list<string> $paths Include paths to convert.
-     * @param bool $directories Whether parent directories should be included.
      *
      * @return string Regular expression fragment for include matching.
      */
-    private function includeRegex(array $paths, bool $directories = false): string
+    private function includeRegex(array $paths): string
     {
         $alternatives = [];
 
         foreach ($paths as $path) {
-            $isFile = str_ends_with($path, '.php');
-            if (!$directories || !$isFile) {
-                $alternatives[] = preg_quote($path, '~') . ($isFile ? '$' : '(?:/|$)');
-            }
+            $suffix = str_ends_with($path, '.php') ? '$' : '(?:/|$)';
+            $alternatives[] = preg_quote($path, '~') . $suffix;
+        }
 
-            if (!$directories) {
-                continue;
+        return $this->alternativesRegex($alternatives);
+    }
+
+    /**
+     * Builds a regex matching directories required to reach included paths.
+     *
+     * @param list<string> $paths Include paths to reach.
+     *
+     * @return string Regular expression fragment for directory traversal.
+     */
+    private function traversalRegex(array $paths): string
+    {
+        $alternatives = [];
+
+        foreach ($paths as $path) {
+            if (!str_ends_with($path, '.php')) {
+                $alternatives[] = preg_quote($path, '~') . '(?:/|$)';
             }
 
             $parent = dirname($path);
@@ -106,6 +119,18 @@ final class PhpCodeSnifferRenderer implements Renderer
             }
         }
 
+        return $this->alternativesRegex($alternatives);
+    }
+
+    /**
+     * Combines regular expression alternatives, removing duplicates.
+     *
+     * @param list<string> $alternatives Regular expression fragments to combine.
+     *
+     * @return string Combined fragment, or a fragment that never matches.
+     */
+    private function alternativesRegex(array $alternatives): string
+    {
         return $alternatives === [] ? '(?!)' : '(?:' . implode('|', array_unique($alternatives)) . ')';
     }
 
@@ -117,6 +142,24 @@ final class PhpCodeSnifferRenderer implements Renderer
      * @return list<string> Exclusion patterns for hidden directories.
      */
     private function hiddenDirectoryPatterns(array $includes): array
+    {
+        $protected = $this->protectedHiddenRoots($includes);
+        $patterns = [];
+        foreach (['', ...$protected] as $root) {
+            $patterns[] = $this->hiddenDirectoryPattern($root, $protected);
+        }
+
+        return $patterns;
+    }
+
+    /**
+     * Collects hidden directory roots preserved by explicit directory includes.
+     *
+     * @param list<string> $includes Paths explicitly included for PHPCS.
+     *
+     * @return list<string> Unique hidden directory roots in include order.
+     */
+    private function protectedHiddenRoots(array $includes): array
     {
         $protected = [];
         foreach ($includes as $include) {
@@ -136,24 +179,32 @@ final class PhpCodeSnifferRenderer implements Renderer
             }
         }
 
-        $protected = array_values(array_unique($protected));
-        $patternCompiler = [];
-        foreach (['', ...$protected] as $root) {
-            $exceptions = [];
-            foreach ($protected as $path) {
-                if ($root === '') {
-                    $exceptions[] = preg_quote($path, '~');
-                } elseif (str_starts_with($path, $root . '/')) {
-                    $exceptions[] = preg_quote(substr($path, strlen($root) + 1), '~');
-                }
-            }
+        return array_values(array_unique($protected));
+    }
 
-            $prefix = $root === '' ? '' : preg_quote($root, '~') . '/';
-            $except = $exceptions === [] ? '' : '(?!(?:' . implode('|', $exceptions) . ')(?:/|$))';
-            $patternCompiler[] = '(?-i)^' . $prefix . $except . '(?:[^/]+/){0,}\\.[^/]+/*';
+    /**
+     * Builds a hidden directory exclusion while preserving protected descendants.
+     *
+     * @param string $root Root to traverse, or an empty string for the project root.
+     * @param list<string> $protected Explicitly included hidden directory roots.
+     *
+     * @return string PHPCS exclusion pattern for hidden directories below the root.
+     */
+    private function hiddenDirectoryPattern(string $root, array $protected): string
+    {
+        $exceptions = [];
+        foreach ($protected as $path) {
+            if ($root === '') {
+                $exceptions[] = preg_quote($path, '~');
+            } elseif (str_starts_with($path, $root . '/')) {
+                $exceptions[] = preg_quote(substr($path, strlen($root) + 1), '~');
+            }
         }
 
-        return $patternCompiler;
+        $prefix = $root === '' ? '' : preg_quote($root, '~') . '/';
+        $except = $exceptions === [] ? '' : '(?!(?:' . implode('|', $exceptions) . ')(?:/|$))';
+
+        return '(?-i)^' . $prefix . $except . '(?:[^/]+/){0,}\\.[^/]+/*';
     }
 
     /**

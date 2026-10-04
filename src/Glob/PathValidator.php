@@ -12,13 +12,25 @@ use RuntimeException;
 final class PathValidator
 {
     /**
-     * Validates a literal repository-relative path.
+     * Returns a validated repository-relative path.
      *
      * @param string $path Path to validate.
      *
      * @return string The validated path.
      */
     public static function literal(string $path): string
+    {
+        self::validateLiteral($path);
+
+        return $path;
+    }
+
+    /**
+     * Validates a literal repository-relative path.
+     *
+     * @param string $path Path to validate.
+     */
+    public static function validateLiteral(string $path): void
     {
         if (!preg_match('~^[a-zA-Z0-9_. -]+(?:/[a-zA-Z0-9_. -]+)*$~D', $path)) {
             throw new RuntimeException("Unsupported path: '$path'. Use relative paths with /.");
@@ -35,8 +47,6 @@ final class PathValidator
                 throw new RuntimeException("Invalid path segment in '$path'.");
             }
         }
-
-        return $path;
     }
 
     /**
