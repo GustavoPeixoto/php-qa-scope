@@ -128,7 +128,8 @@ final class ConsoleTest extends TestCase
         $command->method('name')->willReturn('probe');
         $command->expects(self::once())->method('execute')
             ->with(self::isInstanceOf(Input::class), self::identicalTo($console))
-            ->willThrowException(new RuntimeException('command failed'));
+            ->willThrowException(new RuntimeException('command failed'))
+        ;
         $app = new Application(new CommandRegistry([$command]));
 
         self::assertSame(ExitCode::ERROR, $app->run(['php-qa-scope', 'probe'], $console, '/repo'));

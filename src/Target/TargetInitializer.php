@@ -85,8 +85,7 @@ final class TargetInitializer
             . $eol
             . $target->indent
             . sprintf($target->marker, 'end')
-            . $eol
-        ;
+            . $eol;
         $after = substr_replace($before, $pair, $offset, 0);
         $this->blockLocator->locate($after, $target);
         $this->writer->write($root, $target->path, $before, $after, 'init');

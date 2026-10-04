@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // php-qa-scope:start
 $finder = Symfony\Component\Finder\Finder::create()
     ->files()
@@ -11,6 +13,14 @@ $finder = Symfony\Component\Finder\Finder::create()
         __DIR__ . '/src',
         __DIR__ . '/tests',
     ]);
+$finder = new CallbackFilterIterator(
+    $finder->getIterator(),
+    static function (SplFileInfo $file): bool {
+        $path = substr(str_replace('\\', '/', $file->getPathname()), strlen(__DIR__) + 1);
+
+        return preg_match('~^(?:php\\-cs\\-fixer\\.dist\\.php$)~D', $path) !== 1;
+    },
+);
 
 // php-qa-scope:end
 
@@ -26,6 +36,33 @@ return $config
             'syntax' => 'short',
         ],
 
+        'line_ending' => true,
+        'encoding' => true,
+        'no_trailing_whitespace' => true,
+        'no_whitespace_in_blank_line' => true,
+        'single_blank_line_at_eof' => true,
+        // already aligned with EmptyComment
+        'no_empty_comment' => true,
+        'no_empty_phpdoc' => true,
+
+        // helps with docblock spacing/shape
+        'phpdoc_trim' => true,
+        'phpdoc_indent' => true,
+        'phpdoc_single_line_var_spacing' => true,
+        'phpdoc_summary' => false,
+        // annotations and ordering (partially related)
+        'phpdoc_order' => [
+            'order' => [
+                'param',
+                'return',
+                'throws',
+            ],
+        ],
+        'phpdoc_tag_type' => true,
+
+        // removes truly useless comments/docblocks in some scenarios
+        'no_superfluous_phpdoc_tags' => true,
+
         'binary_operator_spaces' => [
             'default' => 'single_space',
         ],
@@ -38,13 +75,9 @@ return $config
             ],
         ],
 
-        'cast_spaces' => true,
-
         'concat_space' => [
             'spacing' => 'one',
         ],
-
-        'declare_strict_types' => true,
 
         'method_chaining_indentation' => true,
 
@@ -58,12 +91,23 @@ return $config
 
         'single_quote' => true,
 
+        'multiline_whitespace_before_semicolons' => ['strategy' => 'new_line_for_chained_calls'],
+
         'trailing_comma_in_multiline' => [
+            // Keep arrays out to avoid conflict with PHPCS Squiz.Arrays.ArrayDeclaration.NoCommaAfterLast.
             'elements' => [
-                'arrays',
                 'arguments',
                 'parameters',
+                'match',
             ],
         ],
+
+        'method_chaining_indentation' => true,
+        'class_attributes_separation' => [
+            'elements' => [
+                'method' => 'one',
+            ],
+        ],
+        'statement_indentation' => true,
     ])
     ->setFinder($finder);

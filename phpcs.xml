@@ -8,6 +8,7 @@
     <exclude-pattern type="relative">(?-i)^(?!(?:bin(?:/|$)|src(?:/|$)|tests(?:/|$))).+</exclude-pattern>
     <exclude-pattern type="relative">(?-i)^(?!(?:bin(?:/|$)|src(?:/|$)|tests(?:/|$))).+/*</exclude-pattern>
     <exclude-pattern type="relative">(?-i)^(?:[^/]+/){0,}\.[^/]+/*</exclude-pattern>
+    <exclude-pattern type="relative">(?-i)^php\-cs\-fixer\.dist\.php$</exclude-pattern>
     <!-- php-qa-scope:end -->
 
     <rule ref="PSR12"/>

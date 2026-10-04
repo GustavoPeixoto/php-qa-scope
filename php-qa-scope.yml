@@ -3,7 +3,8 @@ include:
   - tests
   - bin
 
-exclude: []
+exclude:
+  - php-cs-fixer.dist.php
 
 tools:
   phpstan:

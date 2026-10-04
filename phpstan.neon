@@ -8,5 +8,6 @@ parameters:
         - 'src'
         - 'tests'
     excludePaths:
-        analyse: []
+        analyse:
+            - 'php-cs-fixer.dist.php' (?)
     # php-qa-scope:end

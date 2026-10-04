@@ -52,8 +52,13 @@
         "php-cs-fixer.config": "${containerEnv:WORKSPACE_DIR}/php-cs-fixer.dist.php",
         "php-cs-fixer.tmpDir": "${containerEnv:WORKSPACE_DIR}/tmp/cs-fixer",
         "php-cs-fixer.onsave": true,
+        "php-cs-fixer.exclude": [
+          "**/vendor/**",
+          "**/php-cs-fixer.dist.php"
+        ],
         "phpsab.excludeGlobs": [
-          "**/vendor/**"
+          "**/vendor/**",
+          "**/php-cs-fixer.dist.php"
         ],
         "phpsab.snifferMode": "onType",
         "remote.autoForwardPorts": false,
