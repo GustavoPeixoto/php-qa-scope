@@ -99,8 +99,13 @@ vendor/bin/phpmd bin text phpmd.xml
 
 The PHP-CS-Fixer configuration uses `setRiskyAllowed(false)` and does not enable `declare_strict_types`. Rule selection and risky-rule policy belong to the Fixer configuration. `php-qa-scope` does not modify that policy.
 
+## Repository Git Hooks
+
+Repository Git hook installation, runtime requirements, pre-push validation, and
+hook automation verification belong in [conventions/git-hooks.md](git-hooks.md).
+
 ## Convention Scope
 
 This convention describes environment topology and usage. It should not document internal details of package behavior.
 
-Repository topology and package distribution boundaries belong in `conventions/repository.md`. Public package commands, supported QA tools, and user-facing configuration semantics belong in `README.md` or in durable OpenSpec artifacts when a change needs planning. Contributor-only setup and local QA commands belong in this convention. Implementation-specific test runners should be documented together with the implementation that introduces them.
+Repository topology and package distribution boundaries belong in `conventions/repository.md`. Public package commands, supported QA tools, and user-facing configuration semantics belong in `README.md` or in durable OpenSpec artifacts when a change needs planning. Contributor environment setup and ordinary local QA commands belong in this convention. Git hook installation, runtime, and verification belong in [conventions/git-hooks.md](git-hooks.md).

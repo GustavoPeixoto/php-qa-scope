@@ -1,0 +1,31 @@
+min_version: 2.1.16
+assert_lefthook_installed: true
+pre-push:
+  commands:
+    qa-gate:
+      only:
+        - run: 'test "${QA_HOOKS_GIT_PUSH-}" = 1'
+      run: 'tools/git-hooks boundary git "$PPID"; exit $?'
+      use_stdin: true
+    qa-manual:
+      skip:
+        - run: 'test "${QA_HOOKS_GIT_PUSH-}" = 1'
+      run: 'tools/git-hooks boundary manual "$PPID"; exit $?'
+      interactive: true
+qa-checks:
+  parallel: true
+  commands:
+    qa-scope:
+      run: tools/git-hooks check qa-scope
+    sniffer:
+      run: tools/git-hooks check sniffer
+    fixer:
+      run: tools/git-hooks check fixer
+    md:
+      run: tools/git-hooks check md
+    stan:
+      run: tools/git-hooks check stan
+    test:
+      run: tools/git-hooks check test
+    openspec:
+      run: tools/git-hooks check openspec

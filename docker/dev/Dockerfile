@@ -41,6 +41,9 @@ RUN corepack enable
 
 RUN git config --system --add safe.directory ${WORKSPACE_DIR}
 
+RUN CI=1 yarn global add lefthook@2.1.16 \
+    && test "$(lefthook version)" = 2.1.16
+
 RUN yarn global add @fission-ai/openspec@1.14.0 \
     && openspec config set profile custom \
     && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
@@ -57,6 +60,7 @@ RUN chmod +x \
     /usr/local/bin/codex \
     /usr/local/bin/setup-codex-context-mode \
     /usr/local/bin/setup-codex-headroom \
+    /usr/local/bin/setup-git-hooks \
     /usr/local/bin/start-headroom-proxy
 
 USER ${USERNAME}

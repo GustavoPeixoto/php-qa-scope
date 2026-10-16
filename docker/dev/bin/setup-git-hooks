@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+command -v lefthook >/dev/null || { echo 'Lefthook is missing; rebuild dev.' >&2; exit 1; }
+command -v python3 >/dev/null || { echo 'Python 3 is missing; rebuild dev.' >&2; exit 1; }
+test "$(lefthook version)" = 2.1.16 || { echo 'Expected Lefthook 2.1.16; rebuild dev.' >&2; exit 1; }
+cd "$(git rev-parse --show-toplevel)"
+hook="$(git rev-parse --git-path hooks)/pre-push"
+if [[ -e "$hook" || -L "$hook" ]]; then
+    if [[ -L "$hook" ]] || ! rg -q '^# php-qa-scope managed pre-push launcher$' "$hook"; then
+        echo "Unmanaged pre-push hook at $hook; resolve the conflict explicitly." >&2
+        exit 1
+    fi
+fi
+lefthook install -f pre-push
+python3 - "$hook" <<'PY'
+from pathlib import Path
+import sys
+
+hook = Path(sys.argv[1])
+launcher = hook.read_text()
+header, body = launcher.split('\n', 1)
+forward = '''# php-qa-scope managed pre-push launcher
+# Forward opaque Git arguments without shell command interpolation.
+export QA_HOOKS_REMOTE_NAME="${1-}"
+export QA_HOOKS_REMOTE_LOCATION="${2-}"
+export QA_HOOKS_GIT_PUSH=1
+'''
+hook.write_text(header + '\n' + forward + body)
+PY
+echo 'Installed only the managed pre-push hook.'

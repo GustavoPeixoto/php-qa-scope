@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+"""Contributor-only pre-push entrypoint (no bytecode or package API)."""
+import sys
+import signal
+
+sys.dont_write_bytecode = True
+
+
+def startup_interrupt(number, frame):
+    """Reject cancellation before the lifecycle modules have finished importing."""
+    raise SystemExit(f"Pre-push interrupted by signal {number} during startup.")
+
+
+for number in (signal.SIGINT, signal.SIGTERM):
+    signal.signal(number, startup_interrupt)
+
+from git_hooks.runner import main
+
+raise SystemExit(main())

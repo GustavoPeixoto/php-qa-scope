@@ -56,6 +56,8 @@ Durable internal PHP composition rules belong in [conventions/php-composition.md
 Repository operation rules belong in conventions:
 
 - environment and Dev Container usage belong in `conventions/environment.md`;
+- general Git operations and push authorization belong in [conventions/git.md](git.md);
+- repository Git hook installation, pre-push policies, verification, and agent failure/bypass rules belong in [conventions/git-hooks.md](git-hooks.md);
 - OpenSpec workflow belongs in `conventions/workflow.md`;
 - artifact durability and `tmp/` usage belong in `conventions/artifacts.md`;
 - context-mode and Codex hook usage belong in `conventions/context-mode.md`;

@@ -35,3 +35,8 @@ Include only files related to the work in the commit. Do not mix temporary hando
 ## Push
 
 Push only when the user explicitly asks or when the agreed workflow requires it. Before pushing, validate what is relevant to the change and review the diff.
+
+## Repository Git Hooks
+
+Pre-push policies and agent response to hook failures and bypass decisions belong
+in [conventions/git-hooks.md](git-hooks.md).

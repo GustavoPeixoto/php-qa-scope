@@ -10,6 +10,7 @@ context: |
   - Read `conventions/repository.md` for repository topology, package root layout, public package distribution, and documentation boundaries.
   - Read `conventions/workflow.md` for the OpenSpec workflow.
   - Read `conventions/git.md` when preparing branches, commits, pushes, or reviewing versioned state.
+  - Read `conventions/git-hooks.md` when installing, configuring, executing, verifying, troubleshooting, documenting, or deciding whether to bypass repository Git hooks.
   - Read `conventions/environment.md` for rules about environments, Dev Containers, Docker, Compose, the `dev` service, and PHP package tooling.
   - Read `conventions/artifacts.md` for rules about durable artifacts, transient artifacts, handoffs, drafts, and `tmp/`.
   - Read `conventions/context-mode.md` for rules about context-mode, `ctx_*` tools, Codex hooks, and preserving the context window.
