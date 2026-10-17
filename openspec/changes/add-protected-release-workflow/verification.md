@@ -9,7 +9,8 @@ policy are active; maintainer-observed App installation/permissions match the
 authenticated tag bypass, and isolated negative enforcement probes passed.
 Independent reviewer/CODEOWNER availability is not a prerequisite.
 Tasks **23/24** are complete. Actual App token issuance and publication have not
-been exercised. The authorized disposable fixture awaits manual deletion.
+been exercised. The maintainer deleted the authorized disposable fixture after
+evidence capture; cleanup is complete.
 Real publication (task 4.6) is deferred by explicit maintainer instruction.
 The manifest still has no `version`; a later authorized real release PR supplies it.
 
@@ -336,8 +337,14 @@ these tests. Probes completed at `2026-10-17T23:41:26Z`.
 
 Raw sanitized receipts remain in ignored `tmp/release-rules-probe-evidence.json`;
 the outcomes and identities above are durable evidence independent of that file
-or the disposable repository's later deletion. Cleanup remains the maintainer's
-manual deletion; the CLI has no `delete_repo` scope. Task 4.5 is complete.
+or the disposable repository's later deletion. The maintainer subsequently
+confirmed manually deleting `GustavoPeixoto/php-qa-scope-rules-fixture-20261017`.
+Authenticated repository readback now returns HTTP 404 (`Not Found`), consistent
+with that confirmation; the same CLI session retains admin access to the
+production repository. The maintainer's confirmation establishes deletion,
+rather than inferring it from HTTP 404 alone. Cleanup is complete without granting
+the CLI `delete_repo` scope. Fixture links above are historical provenance; their
+recorded outcomes remain available in this artifact. Task 4.5 is complete.
 
 ## Final infrastructure acceptance checks
 
@@ -366,7 +373,7 @@ native pre-push checks in `20261017-234426-519`, without bypass.
 | 4.2 | Completed: maintainer-observed App ID/installation/all-repository code read/write access match bypass actor `5338805`; API readback confirms variable/secret presence and unchanged all-tag restrictions. Actual token execution is untested. |
 | 4.3 | Completed: ordinary-merge, CI and zero-approval settings are authenticated above. Independent reviewer availability is not an activation gate; preserve the confirmed settings. |
 | 4.4 | Completed: ordinary PR #1 integrated the workflows after successful `Validate Release Branch`; the exact GitHub Actions check and up-to-date policy are required, with the existing controls and zero approvals preserved. |
-| 4.5 | Completed: authorized isolated probes prove tag creation/update/deletion, direct main push and failing-check merge denials, plus a successful zero-review merge. Production PR #1 separately proves the ordinary production path. Maintainer manual fixture deletion remains cleanup. |
+| 4.5 | Completed: authorized isolated probes prove tag creation/update/deletion, direct main push and failing-check merge denials, plus a successful zero-review merge. Production PR #1 separately proves the ordinary production path. The maintainer deleted the fixture after evidence capture; cleanup is complete. |
 | 4.6 | Explicitly deferred. Do not create a production release branch, add a manifest version or publish any tag/GitHub Release now. A later authorized real release must verify checks, applicable rules, App actor, exact integrated SHA/tag and unchanged prior refs. |
 | 4.7 | Convention and evidence describe the initial zero-approval policy and completed infrastructure gates; real publication acceptance remains separately pending. |
 
