@@ -92,6 +92,12 @@ prerequisites. The maintainer may merge their own PR when the applicable checks
 pass. This policy does not guarantee another person's review of workflow changes;
 adding that requirement later needs an explicit policy revision.
 
+Authenticated rollout verification on 2026-10-17 confirmed that `Protect main`
+requires `Validate Release Branch` from GitHub Actions (integration `15368`), with
+an up-to-date branch, zero approvals and no bypass. Infrastructure PR #1 merged
+under those rules. App installation/permission proof and isolated negative
+enforcement probes remain separate activation gates; no real release was used.
+
 1. Preserve active `Protect main` (ID `25322253`), targeting only
    `refs/heads/main`: PRs, zero approvals, deletion/force-push blocks and an empty
    bypass list. Integrate the tested workflows through an ordinary infrastructure
