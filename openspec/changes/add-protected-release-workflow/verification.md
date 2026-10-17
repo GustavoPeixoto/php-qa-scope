@@ -298,8 +298,10 @@ recorded. These proposed probes are not completed acceptance evidence.
 The maintainer authorized creating the public disposable repository
 `GustavoPeixoto/php-qa-scope-rules-fixture-20261017` and agreed to delete it
 manually after evidence capture. The repository contained only a README and the
-minimal `Isolated rules fixture` workflow. It had no package, secrets, App
-installation, release publisher, semantic-version tags or GitHub Releases.
+minimal `Isolated rules fixture` workflow. It had no package, secrets, release
+publisher, semantic-version tags or GitHub Releases. The existing App's
+all-repository access may include this new fixture; no installation settings
+were changed and no App credentials or tokens were used in the fixture.
 
 Fixture main ruleset **25323724** was active only on `refs/heads/main`, with no
 bypass, zero required approvals, PRs, deletion/force-push restrictions and strict
@@ -354,6 +356,8 @@ confirmed no changes to package CLI/source/tests, Composer manifest/lock,
 Lefthook configuration, repository hook setup or hook runtime code. The separately
 authorized local launcher replacement does not modify versioned hook behavior.
 The final documentation update passed strict OpenSpec and whitespace validation.
+Its initial push at `06ffd835fd00d5a990b15b64aa93f57e750c7e28` passed all seven
+native pre-push checks in `20261017-234426-519`, without bypass.
 
 ## Activation gates and deferred publication
 
