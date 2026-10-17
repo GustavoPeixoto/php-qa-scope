@@ -4,8 +4,9 @@
 
 Local release helpers and workflows are implemented. Acceptance is being rerun
 for the revised initial policy: PRs and automatic checks with zero required human
-approvals. Infrastructure activation is **incomplete** until the required check,
-App installation/permissions and coordinated enforcement probes are verified.
+approvals. The workflows are integrated and main's required check is verified.
+Infrastructure activation is still **incomplete** until App installation/permissions
+and the remaining coordinated negative enforcement probes are verified.
 Independent reviewer/CODEOWNER availability is no longer a prerequisite.
 Real publication (task 4.6) is deferred by explicit maintainer instruction.
 The manifest still has no `version`; a later authorized real release PR supplies it.
@@ -22,8 +23,9 @@ acceptance remains unverified until a later authorized real release.
 The continuation installed the distribution's GitHub CLI 2.23.0 in the running
 dev environment (no image definition or package files changed). Browser device
 authentication completed as `GustavoPeixoto`, with Git credential-helper
-reconfiguration declined to preserve the existing Git setup. No remote
-configuration or ref mutation has occurred. Authenticated findings and the
+reconfiguration declined to preserve the existing Git setup. The authorized
+infrastructure branch/PR and main-check update are recorded below; no release ref
+or version was created. Authenticated findings and the
 remaining App/control blockers are recorded below. The maintainer subsequently
 created `Protect main`; its current authenticated readback is recorded separately
 from the earlier snapshots.
@@ -149,7 +151,7 @@ explicit policy revision for individual maintenance. No invitations, placeholder
 CODEOWNERS, weaker approval settings, ruleset edits, commits, pushes or publication
 were performed. Task 4.6 also remains pending by the explicit no-release instruction.
 
-## Initial zero-approval policy — authenticated readback
+## Initial zero-approval policy — bootstrap readback
 
 The maintainer explicitly removed mandatory approval by another person for this
 initial phase and created `Protect main`. The revised planning artifacts adopt
@@ -182,8 +184,8 @@ publication acceptance. No version was published during these checks.
   (one default suppression, no repository suppression configuration).
 - OpenSpec strict validation and whitespace checks passed after the documentation
   update. The local PHP manifest and package/hook code remain unchanged.
-- Authenticated readback confirms the zero-approval PR path is configured and the
-  current PR-only bootstrap lacks required checks. Mutating direct-push,
+- The bootstrap readback confirmed a zero-approval PR path without required checks;
+  the later rollout below adds and verifies the check. Mutating direct-push,
   failed-check-merge and protected-tag probes are still task 4.5, not inferred
   from this readback or from the local publisher fixture client.
 
@@ -191,7 +193,7 @@ The fresh fixture suite retains its existing scope; it does not prove live GitHu
 rules enforcement or the actual App installation. Task 5.1 remains pending until
 the revised protection acceptance is covered by the coordinated group-4 evidence.
 
-## Rollout pre-flight
+## Initial rollout pre-flight
 
 GitHub Actions is enabled with all actions allowed. Local and remote `main` both
 resolve to `9cec62231ce0bb53c5e7b0d02fbfed431734880a`. The actual dev environment
@@ -211,20 +213,52 @@ This local rollout prerequisite is independent of the App installation evidence
 and does not authorize any release. The infrastructure remains eligible for an
 ordinary PR once the local hook conflict is resolved.
 
+## Verified infrastructure rollout — 2026-10-17 UTC
+
+The maintainer explicitly authorized preserving and replacing only the old
+pre-push launcher. Its exact backup remains at
+`tmp/release-hook-backup/pre-push.f38e78508b124304f236f2eee344ce2ed679fba06dde9a84a3908d1ab0d7c095`.
+The current repository's `docker/dev/bin/setup-git-hooks` installed the managed
+launcher with the ownership marker and Git invocation/remote-context forwarding.
+No hook bypass was used and no unrelated hooks were replaced.
+
+The ordinary infrastructure branch `change/protected-release-workflow` was pushed
+at commit `dcde19361387fcac1667cb7061420be0b099ff78`. The actual Git pre-push run
+`20261017-231303-297` passed all seven checks: QA Scope, Sniffer, Fixer, MD, Stan,
+Test and OpenSpec. Its schema-4 summary reports `passed`, exit 0; native reports
+remain in `logs/prepush/20261017-231303-297/`. These paths are retained provenance;
+the successful outcomes are reproduced here rather than inferred from a log link.
+
+| Rollout evidence | Observed result |
+| --- | --- |
+| [Infrastructure PR #1](https://github.com/GustavoPeixoto/php-qa-scope/pull/1) | Ordinary same-repository PR into `main`, no release naming or manifest version edit. |
+| [Required check run](https://github.com/GustavoPeixoto/php-qa-scope/actions/runs/39078233253/job/117529720149) | `Validate Release Branch`, completed successfully on head `dcde19361387fcac1667cb7061420be0b099ff78`; emitted by `github-actions`, integration ID `15368`. |
+| Main-check activation | Only after that success, `Protect main` was updated to require the exact check from integration `15368`, with `strict_required_status_checks_policy: true` and `do_not_enforce_on_create: false`. Existing PR/deletion/force-push rules, zero approvals and empty bypass list were preserved. |
+| Main integration | PR #1 merged at `2026-10-17T23:15:30Z`, producing integrated commit `97e75b5a7a40ed15dbe04d1bf577a08aec5357a2`; the PR had zero reviews. The merge request matched the expected head SHA and used no bypass. |
+| Main rules evaluation | GitHub rule suite `4580733094` for that exact before/after main update reports `pass`; required-status-check, PR, non-fast-forward and deletion evaluations all passed under active `Protect main`. This proves the successful zero-approval path, not the separate negative probes. |
+| [Closed-PR publisher run](https://github.com/GustavoPeixoto/php-qa-scope/actions/runs/39078320153) | `Validate Merged Release` and `Publish protected release tag` were both skipped for the ordinary infrastructure PR. |
+| Release state | The post-merge tag API response is still empty; the package manifest still has no `version`. No release was published. |
+
+Fresh effective-rule reads confirm the required check and up-to-date policy on
+`main`, the original zero-approval settings, and no main bypass. `Protect releases`
+continues covering `~ALL` with the original restrictions and sole Integration
+bypass `5338805`. App-specific installation/permission proof and isolated negative
+enforcement probes remain outstanding; task 4.6 remains explicitly deferred.
+
 ## Activation blockers and required evidence
 
 | Task | Missing evidence / next action |
 | --- | --- |
 | 4.2 | Actual App identity/installation, target repository access and contents-write permission still need proof. Variable/secret presence, all-tag restrictions and the sole Integration bypass are now authenticated above. Preserve `~ALL`; do not recreate the App or rules. |
 | 4.3 | Current ordinary-merge, CI and zero-approval settings are authenticated above. Independent reviewer availability is not an activation gate; preserve the agreed settings when completing the check gate. |
-| 4.4 | Integrate infrastructure through an ordinary PR, observe `Validate Release Branch`, then add it as required with an up-to-date branch. Preserve current PR/deletion/force-push controls, zero approvals and no bypass; do not introduce mandatory CODEOWNERS. |
-| 4.5 | Maintainer-coordinated protected tag mutation, blocked direct main push/failed-check merge and permitted zero-approval PR probes in isolated fixtures/disposable repository. Readback and local mocked create-ref tests do not prove GitHub enforcement. |
+| 4.4 | Completed: ordinary PR #1 integrated the workflows after successful `Validate Release Branch`; the exact GitHub Actions check and up-to-date policy are required, with the existing controls and zero approvals preserved. |
+| 4.5 | The successful zero-approval merge is proven by PR #1 and its rule suite. Isolated/disposable-repository negative probes for protected tag mutations, direct main pushes and failed-check merges remain pending; do not infer their results from readback or the local publisher client. |
 | 4.6 | Explicitly deferred. Do not create a production release branch, add a manifest version or publish any tag/GitHub Release now. A later authorized real release must verify checks, applicable rules, App actor, exact integrated SHA/tag and unchanged prior refs. |
 | 4.7 | Convention and evidence now describe the actual initial zero-approval policy, bootstrap/check state and remaining App/control gates; real publication acceptance remains separately pending. |
 
 No remote activation or production publication is inferred from local test success.
 Authenticated GitHub access is now available. Confirm the actual provisioned App
-installation and complete the required-check/enforcement gates before claiming
+installation and complete the remaining negative enforcement gates before claiming
 infrastructure activation. If merge queue is active or platform/control
 constraints make the policy unsatisfiable, stop activation and resolve
 that scope explicitly. Live tests must not consume disposable production versions.
@@ -243,5 +277,5 @@ for task completion and this evidence note.
 OpenSpec strict validation passed. Final review covered both tracked diffs and the
 new workflow/helper/test/convention files, including the action pins, read-only
 boundary, create-only ref request and the untouched package/hook files. Local
-completion does not remove the pending App/check/enforcement gates or the
+completion does not remove the pending App/negative-enforcement gates or the
 explicitly deferred real publication acceptance.
