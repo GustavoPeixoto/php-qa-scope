@@ -22,6 +22,7 @@ Conventions are durable documents in `conventions/` that define cross-cutting pr
 | [conventions/php-composition.md](conventions/php-composition.md) | Internal PHP tool identities, dependency injection, default factories, registries, application composition, and CLI parsing responsibilities. |
 | [conventions/workflow.md](conventions/workflow.md) | Exploration, planning, proposals, and applying changes. |
 | [conventions/git.md](conventions/git.md) | Versioned state, diffs, branches, commits, pushes, and change review. |
+| [conventions/releases.md](conventions/releases.md) | Release preparation, version validation, protected tag publication, activation, and recovery. |
 | [conventions/git-hooks.md](conventions/git-hooks.md) | Repository Git hook installation, pre-push policies and validation, automation verification, failure response, and human authorization for bypass. |
 | [conventions/environment.md](conventions/environment.md) | Environments, local infrastructure, Docker, Compose, Dev Containers, `dev`, and PHP package tooling. |
 | [conventions/artifacts.md](conventions/artifacts.md) | Durable and transient artifacts, inputs, handoffs, drafts, `tmp/`, and sources of truth. |
