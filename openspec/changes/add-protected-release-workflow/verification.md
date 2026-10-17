@@ -2,12 +2,14 @@
 
 ## Status
 
-Local release helpers and workflows are implemented. Acceptance is being rerun
-for the revised initial policy: PRs and automatic checks with zero required human
-approvals. The workflows are integrated and main's required check is verified.
-Infrastructure activation is still **incomplete** until App installation/permissions
-and the remaining coordinated negative enforcement probes are verified.
-Independent reviewer/CODEOWNER availability is no longer a prerequisite.
+Local release helpers and workflows are implemented and integrated. Infrastructure
+activation gates are verified for the initial policy: PRs and automatic checks
+with zero required human approvals. Main's exact required check and up-to-date
+policy are active; maintainer-observed App installation/permissions match the
+authenticated tag bypass, and isolated negative enforcement probes passed.
+Independent reviewer/CODEOWNER availability is not a prerequisite.
+Tasks **23/24** are complete. Actual App token issuance and publication have not
+been exercised. The authorized disposable fixture awaits manual deletion.
 Real publication (task 4.6) is deferred by explicit maintainer instruction.
 The manifest still has no `version`; a later authorized real release PR supplies it.
 
@@ -189,9 +191,9 @@ publication acceptance. No version was published during these checks.
   failed-check-merge and protected-tag probes are still task 4.5, not inferred
   from this readback or from the local publisher fixture client.
 
-The fresh fixture suite retains its existing scope; it does not prove live GitHub
-rules enforcement or the actual App installation. Task 5.1 remains pending until
-the revised protection acceptance is covered by the coordinated group-4 evidence.
+At that snapshot, the fixture suite alone did not prove live GitHub enforcement
+or App installation, so task 5.1 remained pending. The subsequent settings
+confirmation and coordinated group-4 evidence below complete that acceptance.
 
 ## Initial rollout pre-flight
 
@@ -245,21 +247,133 @@ continues covering `~ALL` with the original restrictions and sole Integration
 bypass `5338805`. App-specific installation/permission proof and isolated negative
 enforcement probes remain outstanding; task 4.6 remains explicitly deferred.
 
-## Activation blockers and required evidence
+## Documentation rollout and App identification — 2026-10-17 UTC
 
-| Task | Missing evidence / next action |
+The maintainer identified the provisioned App settings page as
+`https://github.com/settings/apps/gustavopeixoto-releasebot`. This establishes
+the intended slug, `gustavopeixoto-releasebot`, but does not yet prove its App ID,
+installation, selected repository or granted contents-write permission.
+An authenticated `GET /apps/gustavopeixoto-releasebot` returns 404 with the CLI
+OAuth session. A private App may not be visible through that endpoint; this is
+not evidence that the App is absent or misconfigured. Maintainer confirmation
+from the authenticated App settings and installation configuration is pending.
+No credentials were requested or disclosed, and no replacement App was created.
+
+The maintainer subsequently inspected the authenticated App/installation settings
+and confirmed App ID **5338805**, access to **all repositories** on the account
+(including `php-qa-scope`), and **Read and write access to code**. The App ID
+matches the sole Integration bypass actor in `Protect releases`. This is
+maintainer-observed installation/permission evidence, rather than a successful
+App-authenticated API request or an exercised installation token. Fresh CLI API
+readback independently confirms the variable/secret names remain present and the
+active all-tag rules retain the same sole bypass actor. Task 4.2 is complete on
+that combined evidence; credential validity and real publication remain part of
+the explicitly deferred task 4.6. The existing all-repository grant was preserved;
+the workflow requests a token scoped to this repository and contents-write only.
+
+The activation evidence and convention updates were committed as
+`297306561d9bee72ff8e5582f5a2b8212d225dab` and integrated through ordinary
+[PR #2](https://github.com/GustavoPeixoto/php-qa-scope/pull/2).
+Its actual pre-push execution `20261017-231939-504` passed all seven checks,
+with schema-4 overall status `passed` and exit 0.
+The exact-head [Validate Release Branch check](https://github.com/GustavoPeixoto/php-qa-scope/actions/runs/39078625127/job/117530860350)
+completed successfully under GitHub Actions integration `15368`.
+The SHA-matched, ordinary merge completed at `2026-10-17T23:30:44Z`, with
+zero reviews, producing `31ece9db9da6d6c18cfcd7edcef0709030c4d688`.
+The [closed-PR publication workflow](https://github.com/GustavoPeixoto/php-qa-scope/actions/runs/39079311446)
+was skipped. Fresh authenticated readback confirms unchanged main/tag controls,
+an empty tag list and no manifest `version`.
+
+The proposed isolated enforcement fixture is a new public repository,
+`GustavoPeixoto/php-qa-scope-rules-fixture-20261017`, containing only a README
+and a minimal read-only check workflow. It would test non-version fixture tags,
+direct main updates, failing-check merges and a successful zero-review merge
+under matching relevant protections. No fixture has been created; maintainer
+coordination is pending. The CLI lacks `delete_repo`, so the proposed cleanup
+requires the maintainer to delete the fixture through GitHub after evidence is
+recorded. These proposed probes are not completed acceptance evidence.
+
+## Isolated authenticated enforcement probes — 2026-10-17 UTC
+
+The maintainer authorized creating the public disposable repository
+`GustavoPeixoto/php-qa-scope-rules-fixture-20261017` and agreed to delete it
+manually after evidence capture. The repository contained only a README and the
+minimal `Isolated rules fixture` workflow. It had no package, secrets, release
+publisher, semantic-version tags or GitHub Releases. The existing App's
+all-repository access may include this new fixture; no installation settings
+were changed and no App credentials or tokens were used in the fixture.
+
+Fixture main ruleset **25323724** was active only on `refs/heads/main`, with no
+bypass, zero required approvals, PRs, deletion/force-push restrictions and strict
+up-to-date `Validate Release Branch` from GitHub Actions integration `15368`.
+Fixture tag ruleset **25323726** was active over `~ALL`, with no bypass and
+creation/update/deletion/non-fast-forward restrictions. This reproduces the
+relevant ordinary-user restrictions; it does not exercise the production App's
+separate bypass or token generation. No production rules were disabled.
+
+All probes used the ordinary authenticated `GustavoPeixoto` CLI account. A
+non-version tag `fixture-existing` was seeded before enabling the fixture rules,
+at initial main **79cc81c17d37905c07d64d4bf878f5a98499167c**.
+
+| Probe | Actual result and retained evidence |
 | --- | --- |
-| 4.2 | Actual App identity/installation, target repository access and contents-write permission still need proof. Variable/secret presence, all-tag restrictions and the sole Integration bypass are now authenticated above. Preserve `~ALL`; do not recreate the App or rules. |
-| 4.3 | Current ordinary-merge, CI and zero-approval settings are authenticated above. Independent reviewer availability is not an activation gate; preserve the agreed settings when completing the check gate. |
-| 4.4 | Completed: ordinary PR #1 integrated the workflows after successful `Validate Release Branch`; the exact GitHub Actions check and up-to-date policy are required, with the existing controls and zero approvals preserved. |
-| 4.5 | The successful zero-approval merge is proven by PR #1 and its rule suite. Isolated/disposable-repository negative probes for protected tag mutations, direct main pushes and failed-check merges remain pending; do not infer their results from readback or the local publisher client. |
-| 4.6 | Explicitly deferred. Do not create a production release branch, add a manifest version or publish any tag/GitHub Release now. A later authorized real release must verify checks, applicable rules, App actor, exact integrated SHA/tag and unchanged prior refs. |
-| 4.7 | Convention and evidence now describe the actual initial zero-approval policy, bootstrap/check state and remaining App/control gates; real publication acceptance remains separately pending. |
+| Create `fixture-new` | HTTP 422. The generic `Reference update failed` response alone was insufficient; authenticated rule suite **4580883299** independently reports active `creation` failure: `Cannot create ref due to creations being restricted.` The ref remained absent. |
+| Move `fixture-existing` to another commit | HTTP 422, `Cannot update this protected ref.` Rule suite **4580887612** reports active `update` failure. The original SHA remained unchanged. |
+| Delete `fixture-existing` | HTTP 422, `Cannot delete this tag`. Rule suite **4580887826** reports active `deletion` failure. The ref remained present at its original SHA. |
+| Direct main ref update without a PR | HTTP 422; suite **4580893372** reports active `pull_request` and `required_status_checks` failures. Main remained unchanged. |
+| Actual Git push to main without a PR | Commit **2b3c25fd452519e2be3c2abc61fe447add78c03c** was rejected remotely with `GH013`, including `Changes must be made through a pull request` and the missing required check. Rule suite **4580893720** confirms both active failures. No hook bypass or force push was used; main remained unchanged. |
+| Direct update/push of the failing-check PR commit | API and Git both rejected it for the failing `Validate Release Branch`; suite **4580888500** confirms the required-status-check failure. Its PR association passed the PR rule, so the separate commit without a PR above establishes that gate. |
+| Merge failing-check fixture PR #1 | The real Actions check failed on **f12789f1e88a04623609a4d3bec8f6acd9b1b2d2**; a SHA-matched merge attempt returned HTTP 405 with `Required status check "Validate Release Branch" is failing.` Suite **4580895683** reports that failure for the attempted merge commit. Main remained unchanged. |
+| Merge passing-check fixture PR #2 | The real Actions check passed on **7eb46cfca0307951207412075afb08aacdc4b1a4**. With zero reviews, an ordinary SHA-matched merge succeeded as **3bdd5817af12779d2a76199f86b305465b009c2b**; all four active evaluations passed in suite **4580895951**. Main became that integrated SHA; the seeded tag retained its original SHA. |
 
-No remote activation or production publication is inferred from local test success.
-Authenticated GitHub access is now available. Confirm the actual provisioned App
-installation and complete the remaining negative enforcement gates before claiming
-infrastructure activation. If merge queue is active or platform/control
+The failing check was [run 39079847932, job 117534387903](https://github.com/GustavoPeixoto/php-qa-scope-rules-fixture-20261017/actions/runs/39079847932/job/117534387903);
+the successful check was [run 39079850266, job 117534395111](https://github.com/GustavoPeixoto/php-qa-scope-rules-fixture-20261017/actions/runs/39079850266/job/117534395111).
+Both checks report the exact expected head SHA and App integration `15368`.
+The passing PR was observed as `clean`, the failing PR as `blocked`.
+Final readback retained both active rulesets and empty bypass lists. The only
+fixture tag was still `fixture-existing`; no production refs were mutated by
+these tests. Probes completed at `2026-10-17T23:41:26Z`.
+
+Raw sanitized receipts remain in ignored `tmp/release-rules-probe-evidence.json`;
+the outcomes and identities above are durable evidence independent of that file
+or the disposable repository's later deletion. Cleanup remains the maintainer's
+manual deletion; the CLI has no `delete_repo` scope. Task 4.5 is complete.
+
+## Final infrastructure acceptance checks
+
+After the settings confirmation, all 13 release helper/publisher/native Composer
+test methods passed again. The suite includes the integrated event-to-create-ref
+simulation and actual inline publisher logic; the external App action still uses
+a fixture token. Both workflows passed actionlint **1.7.12**. Zizmor **1.31.1**
+with `--offline --pedantic` reported no findings (one default suppression).
+Group-4 evidence separately covers initial PR-only bootstrap, activation of the
+real required check, ordinary production zero-review merges and isolated
+negative/successful enforcement probes. Task 5.1 is complete on that combined
+evidence, without claiming a live publication or actual App token execution.
+
+A baseline comparison against `9cec62231ce0bb53c5e7b0d02fbfed431734880a`
+confirmed no changes to package CLI/source/tests, Composer manifest/lock,
+Lefthook configuration, repository hook setup or hook runtime code. The separately
+authorized local launcher replacement does not modify versioned hook behavior.
+The final documentation update passed strict OpenSpec and whitespace validation.
+Its initial push at `06ffd835fd00d5a990b15b64aa93f57e750c7e28` passed all seven
+native pre-push checks in `20261017-234426-519`, without bypass.
+
+## Activation gates and deferred publication
+
+| Task | Evidence / next action |
+| --- | --- |
+| 4.2 | Completed: maintainer-observed App ID/installation/all-repository code read/write access match bypass actor `5338805`; API readback confirms variable/secret presence and unchanged all-tag restrictions. Actual token execution is untested. |
+| 4.3 | Completed: ordinary-merge, CI and zero-approval settings are authenticated above. Independent reviewer availability is not an activation gate; preserve the confirmed settings. |
+| 4.4 | Completed: ordinary PR #1 integrated the workflows after successful `Validate Release Branch`; the exact GitHub Actions check and up-to-date policy are required, with the existing controls and zero approvals preserved. |
+| 4.5 | Completed: authorized isolated probes prove tag creation/update/deletion, direct main push and failing-check merge denials, plus a successful zero-review merge. Production PR #1 separately proves the ordinary production path. Maintainer manual fixture deletion remains cleanup. |
+| 4.6 | Explicitly deferred. Do not create a production release branch, add a manifest version or publish any tag/GitHub Release now. A later authorized real release must verify checks, applicable rules, App actor, exact integrated SHA/tag and unchanged prior refs. |
+| 4.7 | Convention and evidence describe the initial zero-approval policy and completed infrastructure gates; real publication acceptance remains separately pending. |
+
+Infrastructure acceptance combines authenticated API readback, maintainer-observed
+App installation settings and isolated enforcement evidence. Production publication
+is not inferred from those checks. Before a later authorized real release, re-read
+the remote state. If merge queue is active or platform/control
 constraints make the policy unsatisfiable, stop activation and resolve
 that scope explicitly. Live tests must not consume disposable production versions.
 
@@ -277,5 +391,5 @@ for task completion and this evidence note.
 OpenSpec strict validation passed. Final review covered both tracked diffs and the
 new workflow/helper/test/convention files, including the action pins, read-only
 boundary, create-only ref request and the untouched package/hook files. Local
-completion does not remove the pending App/negative-enforcement gates or the
-explicitly deferred real publication acceptance.
+completion is supported by the separate settings/enforcement evidence above;
+it does not remove the explicitly deferred real publication acceptance.
