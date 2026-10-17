@@ -95,8 +95,12 @@ adding that requirement later needs an explicit policy revision.
 Authenticated rollout verification on 2026-10-17 confirmed that `Protect main`
 requires `Validate Release Branch` from GitHub Actions (integration `15368`), with
 an up-to-date branch, zero approvals and no bypass. Infrastructure PR #1 merged
-under those rules. App installation/permission proof and isolated negative
-enforcement probes remain separate activation gates; no real release was used.
+under those rules. The maintainer confirmed App `gustavopeixoto-releasebot`
+(ID `5338805`) is installed for all account repositories with code read/write
+access; this matches the sole tag bypass actor. Isolated authenticated probes
+verified protected tag mutation, direct main push and failing-check merge denials,
+plus a zero-review successful merge. See the change's `verification.md` for the
+evidence and its limits. No real release or App token issuance was exercised.
 
 1. Preserve active `Protect main` (ID `25322253`), targeting only
    `refs/heads/main`: PRs, zero approvals, deletion/force-push blocks and an empty
