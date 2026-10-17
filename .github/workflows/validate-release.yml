@@ -1,0 +1,60 @@
+name: Validate release
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Release Branch
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: validate-release-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Check release origin
+        if: startsWith(github.event.pull_request.head.ref, 'release/')
+        env:
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        shell: python
+        run: |
+          import os
+          import sys
+          if os.environ['HEAD_REPOSITORY'] != os.environ['GITHUB_REPOSITORY']:
+              sys.exit('Release origin must be the same repository')
+
+      - name: Ordinary PR
+        if: ${{ !startsWith(github.event.pull_request.head.ref, 'release/') }}
+        run: echo 'Ordinary PR; no release version required.'
+
+      - name: Checkout exact proposed commit
+        if: startsWith(github.event.pull_request.head.ref, 'release/')
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Composer validation
+        if: startsWith(github.event.pull_request.head.ref, 'release/')
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          tools: composer:2.10.3
+          coverage: none
+
+      - name: Validate manifest and lock
+        if: startsWith(github.event.pull_request.head.ref, 'release/')
+        run: composer --no-plugins --no-scripts validate --strict --no-check-version
+
+      - name: Validate release contract
+        if: startsWith(github.event.pull_request.head.ref, 'release/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: python3 -B tools/release/validate.py

@@ -1,6 +1,7 @@
 /.agents export-ignore
 /.codex export-ignore
 /.devcontainer export-ignore
+/.github export-ignore
 /.vscode export-ignore
 /conventions export-ignore
 /docker export-ignore

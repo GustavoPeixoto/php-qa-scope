@@ -1,0 +1,173 @@
+name: Create release tag
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Merged Release
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: validate-merged-release-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout exact integrated commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+
+      - name: Set up Composer validation
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          tools: composer:2.10.3
+          coverage: none
+
+      - name: Validate integrated manifest and lock
+        run: composer --no-plugins --no-scripts validate --strict --no-check-version
+
+      - name: Validate integrated release contract
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: python3 -B tools/release/validate.py
+
+  publish:
+    name: Publish protected release tag
+    needs: validate
+    permissions:
+      contents: read
+      pull-requests: read # Re-read merged PR identity and eligibility through the API.
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: protected-release-publication
+      cancel-in-progress: false
+    steps:
+      # This code is workflow-owned. Never import checked-out/API-supplied code here.
+      - name: Recheck current publication authority
+        id: authority
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import base64
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          def require(condition, message):
+              if not condition:
+                  raise ValueError(message)
+
+          def api(endpoint):
+              response = subprocess.run(
+                  ['gh', 'api', '--method', 'GET', endpoint],
+                  capture_output=True, text=True, check=False,
+              )
+              require(response.returncode == 0, 'GitHub API lookup failed')
+              return json.loads(response.stdout)
+
+          def version(value):
+              pattern = r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+              if not isinstance(value, str) or re.fullmatch(pattern, value) is None:
+                  return None
+              return tuple(int(part) for part in value.split('.'))
+
+          repository = os.environ['GITHUB_REPOSITORY']
+          require(re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository), 'Invalid repository')
+          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          require(event.get('action') == 'closed', 'Expected closed PR event')
+          number = event['number']
+          require(type(number) is int and number > 0, 'Invalid PR number')
+          expected_sha = event['pull_request']['merge_commit_sha']
+          require(isinstance(expected_sha, str) and re.fullmatch(r'[0-9a-f]{40}', expected_sha), 'Invalid integrated SHA')
+          pr = api(f'repos/{repository}/pulls/{number}')
+          require(type(pr.get('number')) is int and pr['number'] == number, 'PR identity mismatch')
+          require(pr.get('merged') is True and pr.get('state') == 'closed', 'PR has not merged')
+          require(pr['base']['ref'] == 'main' and pr['base']['repo']['full_name'] == repository, 'Wrong release base')
+          require(pr['head']['repo']['full_name'] == repository, 'Release origin must be the same repository')
+          branch = pr['head']['ref']
+          require(isinstance(branch, str) and branch.startswith('release/v'), 'Expected canonical release/vX.Y.Z branch')
+          candidate = branch.removeprefix('release/v')
+          proposed = version(candidate)
+          require(proposed is not None, 'Expected canonical release/vX.Y.Z branch')
+          sha = pr['merge_commit_sha']
+          require(sha == expected_sha, 'Integrated SHA changed')
+
+          content = api(f'repos/{repository}/contents/composer.json?ref={sha}')
+          require(content.get('type') == 'file' and content.get('path') == 'composer.json', 'Invalid manifest response')
+          require(content.get('encoding') == 'base64' and isinstance(content.get('content'), str), 'Invalid manifest encoding')
+          encoded = content['content'].replace('\n', '').replace('\r', '')
+          manifest = json.loads(base64.b64decode(encoded, validate=True).decode('utf-8'))
+          require(isinstance(manifest, dict) and isinstance(manifest.get('version'), str) and manifest['version'] == candidate,
+                  f'Manifest version must equal {candidate} exactly')
+
+          tags = []
+          seen = set()
+          for page in range(1, 10001):
+              data = api(f'repos/{repository}/tags?per_page=100&page={page}')
+              require(isinstance(data, list) and len(data) <= 100, 'Malformed tag page')
+              names = []
+              for tag in data:
+                  require(isinstance(tag, dict) and isinstance(tag.get('name'), str) and tag['name'], 'Malformed tag entry')
+                  names.append(tag['name'])
+              require(not any(name in seen for name in names) and len(set(names)) == len(names), 'Repeated/inconsistent tag pagination')
+              seen.update(names)
+              tags.extend(names)
+              if len(data) < 100:
+                  break
+          else:
+              raise ValueError('Incomplete tag pagination')
+          tag = 'v' + candidate
+          require(tag not in tags, f'Target ref already exists: {tag}')
+          stable = [value for name in tags if (value := version(name.removeprefix('v'))) is not None]
+          baseline = max(stable) if stable else None
+          if baseline is None:
+              allowed = [(0, 1, 0)]
+          else:
+              major, minor, patch = baseline
+              allowed = [(major + 1, 0, 0), (major, minor + 1, 0), (major, minor, patch + 1)]
+          display = lambda value: '.'.join(map(str, value))
+          require(proposed in allowed,
+                  f'Proposed {candidate}; baseline {display(baseline) if baseline else "none"}; allowed {", ".join(map(display, allowed))}')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'tag={tag}\nsha={sha}\n')
+
+      - name: Generate repository-scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+
+      - name: Create immutable lightweight release ref
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ steps.authority.outputs.tag }}
+          MERGE_SHA: ${{ steps.authority.outputs.sha }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" -f sha="$MERGE_SHA"
