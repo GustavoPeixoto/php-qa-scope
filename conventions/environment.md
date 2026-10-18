@@ -33,6 +33,47 @@ Use it for:
 
 The PHP service is a development and verification environment. This package does not define or maintain a PHP production runtime image.
 
+### Shared PHP And Composer Tooling
+
+`docker/php/Dockerfile` defines the shared runtime as `base -> tooling -> development`.
+The PHP image version is declared in `base`; Composer is provisioned once in
+`tooling`. Both release-validation jobs build `tooling` directly. The PHP Compose
+service and Dev Container retain the `development` target, which adds Xdebug,
+development ini files, utilities, the configured user and workspace.
+
+Build the CI target from the repository root without development arguments:
+
+```sh
+docker build --file docker/php/Dockerfile --target tooling --tag php-qa-scope-release-tooling .
+```
+
+The tooling build does not execute the development-only PIE/Xdebug installation
+or require local `.env` files or a running Compose service. Release workflows
+mount their exact checkout read-only at `/workspace` and execute Composer there;
+Python and GitHub CLI remain on the runner. No API/App credentials are passed to
+the image build or Composer container.
+
+For release runtime smoke tests, also build the development image with the
+workspace path used by the test process:
+
+```sh
+docker build --file docker/php/Dockerfile --target development --build-arg WORKSPACE_DIR="$PWD" --tag php-qa-scope-release-development .
+```
+
+The release tests compare actual PHP/Composer versions against the single
+Dockerfile declarations and each other, check Xdebug isolation and development
+workspace behavior, and run strict Composer fixtures through tooling. When Docker
+runs on the host while the tests run inside `dev`, set
+`RELEASE_TEST_HOST_WORKSPACE` to the host path of this checkout so temporary fixture
+paths remain visible through the bind mount. Optional `RELEASE_TEST_TOOLING_IMAGE`
+and `RELEASE_TEST_DEVELOPMENT_IMAGE` select already built images;
+`RELEASE_TEST_COMPOSER` overrides the fixture command prefix if needed.
+
+Docker builds require the referenced registries; cached parent layers reduce
+subsequent builds. Centralized version declarations prevent independently maintained
+PHP/Composer pins in CI and tests. Mutable upstream image tags and package
+repositories still limit byte-for-byte reproducibility.
+
 ## Environment Topology
 
 The environment topology is intentionally small:

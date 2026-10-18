@@ -43,19 +43,44 @@ API failures never mean empty history. Finish one release before merging another
 
 ## Validation and publication
 
-The exact required job/check name is `Validate Release Branch`. It runs on every
-PR to `main` when opened, reopened, synchronized, or marked ready. Ordinary PRs,
-including forks, pass release-specific checks. Any `release/` prefix opts into
-validation; malformed names and release-named forks fail.
+The exact required job/check name is `Validate Release Branch`. The workflow is
+triggered for PRs to `main` when opened, reopened, synchronized, or marked ready,
+without path filters. One job-level `release/` prefix condition skips the entire
+job for ordinary PRs, including forks, before allocating a runner or building an
+image. A skipped job is acceptable for the required check; a workflow excluded by
+event/path filters can leave that check absent or pending. Any `release/` prefix
+opts into validation, including malformed names and release-named forks. The origin
+step rejects release forks before checkout/build; remaining validation steps use
+normal success/failure sequencing without repeated prefix conditions.
 
-Both release PR content and the exact integrated commit use Composer 2.10.3:
+Both release PR content and the exact integrated commit build the `tooling` target
+of their checked-out `docker/php/Dockerfile` and run Composer in that image. PHP and
+Composer version declarations are shared with the local `development` target,
+which retains Xdebug and local user/workspace setup. CI does not use setup-php or
+independent runtime pins, local `.env` files or a running Compose service. Python
+and `gh` remain on the runner. Builds and Composer containers receive no API/App
+credentials; failures fail the validation job and prevent dependent publication.
+
+The strict command inside the container remains:
 
 ```sh
 composer --no-plugins --no-scripts validate --strict --no-check-version
 ```
 
 For the running PHP service, prefix that command with `docker compose exec -T php`.
-The option suppresses only the advisory against explicitly declaring `version`.
+For the CI target on a host with this checkout available at `$PWD`, use:
+
+```sh
+docker build --file docker/php/Dockerfile --target tooling --tag php-qa-scope-release-tooling .
+docker run --rm --mount "type=bind,source=$PWD,target=/workspace,readonly" --workdir /workspace php-qa-scope-release-tooling composer --no-plugins --no-scripts validate --strict --no-check-version
+```
+
+Inside `dev`, use the host checkout path as the bind-mount source when Docker runs
+on the host. See [environment.md](environment.md) for target builds and test mount
+configuration. Builds can reuse parent layers, but shared version declarations do
+not guarantee byte-for-byte reproducibility of mutable upstream tags/packages.
+
+`--no-check-version` suppresses only the advisory against explicitly declaring `version`.
 Schema, publishability, other strict warnings, and existing lock consistency still
 fail. Do not install dependencies, run scripts, enable plugins, suppress all
 warnings, or disable lock/publishability checks. If lock metadata is stale, use
@@ -110,12 +135,18 @@ evidence and its limits. No real release or App token issuance was exercised.
    bypass list. Integrate the tested workflows through an ordinary infrastructure
    PR, without release naming or a manifest version.
 2. Let an ordinary PR emit `Validate Release Branch`, then require that exact
-   check and any existing required CI, with an up-to-date branch before merge.
+   check and GitHub Actions integration, along with any existing required CI and
+   an up-to-date branch. The ordinary job may be skipped; it need not execute an
+   echo step or allocate a runner. Preserve the already configured check identity
+   during the job-condition and Docker changes.
    A ruleset requiring only PRs is partial bootstrap. Do not declare full
    activation while required checks are absent. Keep the bypass list empty;
    `.github/` and `tools/release/` follow the same PR/check policy without
    mandatory CODEOWNERS or another person's approval.
 3. Verify ordinary merges and a disabled merge queue before requiring the check.
+   For the revised job, separately prove that an emitted skipped ordinary check
+   permits merge and a failed release check blocks it. Historical per-step checks
+   and local simulations do not prove this behavior under remote branch rules.
    Queue integration is outside this change. Record platform or unverified-control
    limitations as blockers; the absence of another reviewer is not a blocker
    under this initial policy.
@@ -172,11 +203,17 @@ automated here. The manifest version is an enforced copy of the branch intent,
 not an independently selected version. `.github/`, `tools/`, and `conventions/`
 are excluded from Composer dist archives; runtime files and `composer.json` remain.
 
-Run release automation tests in dev with:
+Build the tooling and development smoke-test images as documented in
+[environment.md](environment.md), then run release automation tests in dev with:
 
 ```sh
 PYTHONPATH=tools python3 -B -m unittest discover -s tools/release -p 'test_*.py'
 ```
+
+Set `RELEASE_TEST_HOST_WORKSPACE` for a host Docker daemon when the checkout's host
+path differs from `$PWD`. The fixture suite uses the tooling image; it does not
+install project dependencies. Image smoke tests compare both targets' actual
+versions, confirm Xdebug is absent from tooling and check local development behavior.
 
 Keep local fixture evidence separate from authenticated protection verification
 and any future authorized live publication. Unverified infrastructure gates remain

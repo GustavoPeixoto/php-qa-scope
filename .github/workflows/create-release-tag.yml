@@ -27,15 +27,15 @@ jobs:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           persist-credentials: false
 
-      - name: Set up Composer validation
-        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with:
-          php-version: '8.5'
-          tools: composer:2.10.3
-          coverage: none
+      - name: Build shared PHP and Composer tooling
+        run: docker build --file docker/php/Dockerfile --target tooling --tag php-qa-scope-release-tooling .
 
       - name: Validate integrated manifest and lock
-        run: composer --no-plugins --no-scripts validate --strict --no-check-version
+        run: >-
+          docker run --rm
+          --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly"
+          --workdir /workspace php-qa-scope-release-tooling
+          composer --no-plugins --no-scripts validate --strict --no-check-version
 
       - name: Validate integrated release contract
         env:

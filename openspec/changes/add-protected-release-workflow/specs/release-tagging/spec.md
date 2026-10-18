@@ -57,6 +57,34 @@ With no stable baseline, the first release SHALL be `0.1.0`. Given baseline `M.m
 - **WHEN** the baseline is `0.2.7`
 - **THEN** only `0.2.8`, `0.3.0`, and `1.0.0` SHALL pass progression validation
 
+### Requirement: Shared PHP and Composer environment for development and CI
+
+`docker/php/Dockerfile` SHALL be the shared source of PHP and Composer version declarations for development and release validation. It SHALL provide `base -> tooling -> development`, with the existing PHP reference in `base`, a single shared Composer provision in `tooling`, and `development` inheriting that stage. This refactor SHALL preserve the current version values. The `tooling` target SHALL build independently of development-only workspace arguments and SHALL exclude Xdebug and its PIE/build setup. The `development` target SHALL retain its existing Xdebug, user/workspace configuration and development behavior, and SHALL remain the target used by Compose and Dev Containers.
+
+Both `Validate Release Branch` and `Validate Merged Release` SHALL replace `shivammathur/setup-php` with a direct build of the `tooling` target from their exact checked-out commits and SHALL execute strict Composer validation in the resulting image against that checkout. The proposed head SHA SHALL be used before merge and the integrated SHA after merge. Workflow and test configuration SHALL NOT introduce independent PHP/Composer version pins. CI SHALL NOT require local `.env` files, a running Compose service or development workspace setup. Python and GitHub CLI validation SHALL remain on the runner, and App credentials and GitHub API tokens SHALL NOT be supplied to image builds or Composer containers. The publisher's existing credential-isolation and no-checkout/no-repository-code-execution requirements SHALL remain unchanged.
+
+#### Scenario: Shared runtime parity
+- **WHEN** the tooling and development targets are built from the same checkout
+- **THEN** their actual PHP and Composer versions SHALL match the shared Dockerfile declarations and each other
+- **AND** workflow/test configuration SHALL obtain its version expectations from the shared source or runtime comparison rather than independently maintained version literals
+
+#### Scenario: CI excludes development tooling
+- **WHEN** CI builds only the `tooling` target without development workspace arguments
+- **THEN** the build SHALL succeed without executing the development-only PIE/Xdebug installation
+- **AND** the resulting image SHALL provide PHP and Composer without loading Xdebug
+- **AND** the development target SHALL retain its existing Xdebug and user/workspace behavior
+
+#### Scenario: Proposed and integrated content use the same environment definition
+- **WHEN** either read-only release-validation job runs for an eligible PR event
+- **THEN** its exact proposed or integrated checkout SHALL supply both the Dockerfile build inputs and Composer validation input
+- **AND** strict manifest/lock validation SHALL execute in the resulting tooling image before the release-contract helper proceeds
+- **AND** the publisher SHALL continue to depend on successful integrated-content validation
+
+#### Scenario: Image build or container validation fails
+- **WHEN** the tooling image cannot be built or containerized Composer validation fails
+- **THEN** the validation job SHALL fail without falling back to setup-php or a separately provisioned Composer
+- **AND** dependent publication SHALL NOT proceed
+
 ### Requirement: Strict Composer manifest validation
 
 Release validation SHALL validate the proposed and integrated Composer manifests strictly, including publishability and lock consistency where a lock file exists. It SHALL suppress only Composer's advisory about the presence of `version`. It SHALL NOT install dependencies, run package scripts, or enable Composer plugins to perform validation.
@@ -69,18 +97,35 @@ Release validation SHALL validate the proposed and integrated Composer manifests
 - **WHEN** the manifest is invalid, has another strict validation warning, is unpublishable, or has inconsistent lock metadata
 - **THEN** release validation SHALL fail
 
-### Requirement: Required release check covers all PRs
+### Requirement: Required release check skips ordinary PR jobs
 
-The `Validate Release Branch` check SHALL run for every PR to `main` on opening, reopening, updates, and becoming ready for review. It SHALL NOT use path filtering or a release-only job condition that leaves an ordinary PR's required check absent. Branch-specific constraints SHALL apply only to branches beginning with `release/`.
+The PR workflow SHALL retain its `pull_request` events targeting `main` on opening, reopening, updates, and becoming ready for review, without path filtering. It SHALL retain a single validation job named `Validate Release Branch`, with one job-level condition checking only whether the source branch begins with `release/`. Ordinary PRs, including forks, SHALL skip the entire job before runner allocation. The job SHALL NOT contain an ordinary-PR echo step or repeated release-prefix conditions on its validation steps. A skipped ordinary-PR job SHALL satisfy this required check without replacing it with an absent check.
+
+The job condition SHALL NOT filter by repository origin or canonical version syntax. All release-prefixed PRs SHALL enter validation, so release-named forks and malformed release names fail explicitly. The origin check SHALL remain the first step, before checkout, and subsequent validation steps SHALL retain normal success/failure sequencing.
 
 #### Scenario: Ordinary PR
 - **WHEN** `feature/example` opens or updates a PR to `main`
-- **THEN** the release check SHALL complete successfully without requiring release naming or a version bump
+- **THEN** the entire `Validate Release Branch` job SHALL be skipped before allocating a runner or executing any step
+- **AND** no tooling image SHALL be built or run for that ordinary PR event
+- **AND** its skipped conclusion SHALL NOT block merge when the other branch rules are satisfied
+- **AND** no release naming or version bump SHALL be required
 - **AND** no release tag SHALL be created
+
+#### Scenario: Ordinary fork PR
+- **WHEN** an ordinary branch from a fork opens a PR to `main`
+- **THEN** the entire release-validation job SHALL be skipped by the same job-level condition
+- **AND** the unsupported-release-origin error SHALL NOT apply to that ordinary PR
+
+#### Scenario: Invalid release still enters validation
+- **WHEN** a PR to `main` has a release-prefixed branch with malformed version syntax or comes from a fork
+- **THEN** the job-level condition SHALL allow the validation job to execute
+- **AND** validation SHALL fail explicitly for the invalid name or unsupported origin
+- **AND** a fork-origin release SHALL fail before checkout or any tooling image build
 
 #### Scenario: Release PR update
 - **WHEN** a release PR changes its manifest after an earlier successful check
 - **THEN** validation SHALL run again on the updated content
+- **AND** it SHALL retain the exact proposed-commit checkout and existing release validation sequence
 
 ### Requirement: Publication follows eligible merge
 
@@ -138,11 +183,20 @@ PR validation SHALL use read-only permissions without App credentials. The publi
 
 Before infrastructure activation is declared complete, `main` SHALL require PRs, zero required human approvals, and `Validate Release Branch` plus existing required CI. Workflow and ownership changes SHALL follow the same PR/check policy. Independent reviewers, mandatory CODEOWNER review, stale-approval dismissal and approval of the latest push SHALL NOT be prerequisites in this initial single-maintainer phase. Main protection SHALL retain deletion/force-push blocks and an empty bypass list. Tag protections SHALL block ordinary users/tokens from creating, updating, or deleting protected tags and allow the verified App to create release tags; existing `~ALL` tag coverage SHALL be preserved. Merge queue integration SHALL remain outside this capability's initial supported topology.
 
-The required release check SHALL be added only after it has run on an ordinary PR. An initial ruleset requiring PRs without required status checks SHALL be treated as partial bootstrap, not completed activation. Real publication acceptance SHALL remain separate from infrastructure activation. Completion of infrastructure setup SHALL NOT require executing a real release.
+The required release check SHALL be added only after it has been emitted under its expected name and integration; an ordinary PR's skipped validation job SHALL be an acceptable emitted check. The existing required-check identity SHALL be preserved during the job-level condition revision. Verification SHALL distinguish a skipped job from an absent check caused by workflow filtering, and SHALL establish that ordinary skipped jobs do not block eligible merges while failed release jobs do. Local simulations and authenticated remote evidence SHALL be recorded separately; historical per-step validation evidence SHALL NOT be presented as verification of the revised behavior. An initial ruleset requiring PRs without required status checks SHALL be treated as partial bootstrap, not completed activation. Real publication acceptance SHALL remain separate from infrastructure activation. Completion of infrastructure setup SHALL NOT require executing a real release.
 
 #### Scenario: Main requires PRs and successful checks
 - **WHEN** a contributor attempts a direct push to `main` or a PR merge with failed required checks
 - **THEN** repository protection SHALL block the update or merge
+
+#### Scenario: Skipped ordinary check permits merge
+- **WHEN** an ordinary PR has a skipped `Validate Release Branch` job and meets all other applicable branch rules
+- **THEN** repository protection SHALL NOT block merge because the release-validation job was skipped
+- **AND** `Validate Release Branch` SHALL remain configured as a required check
+
+#### Scenario: Failed release check blocks merge
+- **WHEN** a release-prefixed PR has a failed `Validate Release Branch` job
+- **THEN** repository protection SHALL block merge through that required check
 
 #### Scenario: Single maintainer can merge without another person's approval
 - **WHEN** a maintainer's PR to `main` meets the required automatic checks and other applicable branch rules
@@ -152,7 +206,7 @@ The required release check SHALL be added only after it has run on an ordinary P
 #### Scenario: PR-only bootstrap is incomplete
 - **WHEN** `Protect main` requires PRs with zero approvals but no required status checks have been configured
 - **THEN** infrastructure activation SHALL remain incomplete
-- **AND** the release check SHALL be required after it has run on an ordinary PR
+- **AND** the release check SHALL be required after it has been emitted under the expected name and integration, including as a skipped job for an ordinary PR
 
 #### Scenario: Tag rules are enforced
 - **WHEN** an ordinary developer or personal token attempts a protected tag mutation

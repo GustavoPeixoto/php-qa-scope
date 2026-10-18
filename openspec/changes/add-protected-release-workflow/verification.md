@@ -2,17 +2,25 @@
 
 ## Status
 
-Local release helpers and workflows are implemented and integrated. Infrastructure
-activation gates are verified for the initial policy: PRs and automatic checks
-with zero required human approvals. Main's exact required check and up-to-date
-policy are active; maintainer-observed App installation/permissions match the
-authenticated tag bypass, and isolated negative enforcement probes passed.
-Independent reviewer/CODEOWNER availability is not a prerequisite.
-Tasks **23/23** are complete under the infrastructure-only scope. Actual App token
-issuance and publication have not been exercised. The maintainer deleted the
-authorized disposable fixture after evidence capture; cleanup is complete.
-Real publication is outside this change and requires separate future authorization.
-The manifest still has no `version`; a later authorized real release PR supplies it.
+The original 23 tasks and infrastructure rollout are complete under the initial
+policy: PRs and automatic checks with zero required human approvals. Main's exact
+required check and up-to-date policy remain active; maintainer-observed App
+installation/permissions match the authenticated tag bypass, and the original
+isolated enforcement probes passed. Independent reviewer/CODEOWNER availability
+is not a prerequisite. The original disposable fixture was deleted after evidence
+capture; that historical cleanup remains complete.
+
+The approved follow-ups now implement job-level skipping for ordinary PRs and a
+shared Dockerfile tooling target for both validation jobs and local development.
+Fresh local builds, runtime/Composer fixtures and workflow checks are recorded
+below. Tasks **33/33** are complete. Task **6.4** now has fresh authenticated
+enforcement evidence in the explicitly authorized disposable fixture: a failed
+release check blocked merge, and an ordinary PR with a skipped required job merged
+successfully. Original per-step rollout evidence is retained separately.
+
+Actual App token issuance and publication remain unexercised. No production
+release branch, manifest version, tag or GitHub Release was introduced. A future
+real release remains outside this change and requires separate authorization.
 
 ## Current execution scope
 
@@ -26,8 +34,8 @@ They are not unfinished implementation work in this change.
 
 The dated sections below retain historical inspection and rollout evidence,
 including blockers that were later resolved. They describe the state at each
-snapshot; this status section and the completed infrastructure gates below
-describe the final state.
+snapshot; this status section and the follow-up evidence below describe current
+progress. The completed infrastructure gates describe the original rollout.
 
 The continuation installed the distribution's GitHub CLI 2.23.0 in the running
 dev environment (no image definition or package files changed). Browser device
@@ -431,3 +439,136 @@ boundary, create-only ref request and the untouched package/hook files. Local
 completion is supported by the separate settings/enforcement evidence above;
 it does not claim actual App token issuance or live publication has been exercised.
 That future verification is outside the completed infrastructure change.
+
+## Job condition and shared PHP runtime follow-up — 2026-10-18 UTC
+
+### Implemented scope
+
+- `Validate Release Branch` retains its name, PR events, read-only permissions,
+  concurrency and exact proposed-SHA checkout. One `release/` job condition skips
+  ordinary PRs before runner allocation; there is no ordinary-PR echo or repeated
+  step condition. Release forks are rejected before checkout/build, and malformed
+  release names still enter validation and fail explicitly.
+- `docker/php/Dockerfile` now provides `base -> tooling -> development`, preserving
+  the existing PHP and Composer references. Composer is copied once into tooling;
+  development inherits it and retains its ini files, Xdebug/PIE, utilities, user,
+  workspace and long-running command. Compose and Dev Containers are unchanged.
+- Both validation jobs build tooling from their exact checkout and validate the
+  mounted manifest/lock read-only in a disposable container. Python and `gh` remain
+  on the runner, and no API/App credentials enter the build or Composer command.
+  Build/run failure stops validation. A byte comparison against `HEAD` confirmed
+  that the entire `publish` job is unchanged.
+- Environment/release conventions and tests now describe the shared runtime and
+  skipped job. Workflow tests no longer require setup-php, and runtime tests derive
+  version expectations from the shared Dockerfile and compare actual images.
+
+### Fresh local evidence
+
+| Check | Result |
+| --- | --- |
+| `docker build --file docker/php/Dockerfile --target tooling --tag php-qa-scope-release-tooling .` | Exit 0 without development workspace arguments; no development PIE/Xdebug stage executed. |
+| Development target build with `WORKSPACE_DIR=/php-qa-scope` and tag `php-qa-scope-release-development` | Exit 0, retaining the default development user/workspace contract. |
+| Actual PHP and Composer versions in both images | PHP **8.5.10**, Composer **2.10.3**; expectations read from the single Dockerfile declarations rather than independent test pins. |
+| Runtime/development smoke checks | Tooling has no loaded Xdebug; development has Xdebug, user `dev`, and a writable workdir matching `WORKSPACE_DIR`. |
+| Full release suite: `PYTHONPATH=tools python3 -B -m unittest discover -s tools/release -p 'test_*.py' -v` | **16 tests passed**, using `RELEASE_TEST_HOST_WORKSPACE` for the host Docker bind mount. Strict Composer fixtures execute in tooling, including warning/schema/lock failures, lock repair without dependency upgrades, and no package scripts/dependency installation. |
+| Actual native workflow Docker commands with a fixture client | Both validation jobs passed; source/workdir quoting and read-only mounts were checked, including a path with spaces. Build/run exit 19 propagated and prevented subsequent validation. |
+| Actual PR job condition and release fixtures | Ordinary/fork eligibility skips, malformed release failure, release-fork rejection, updated-manifest rejection, exact-checkout ordering and credential-isolation assertions passed. These are local simulations, not authenticated GitHub enforcement proof. |
+| `actionlint` **1.7.12** | Both production workflows passed syntax/expression/embedded-shell checks, exit 0. The prepared isolated fixture workflow also passed. |
+| `zizmor` **1.31.1** `--offline --pedantic .github/workflows` | Exit 0, no findings; one built-in suppression, no repository suppression configuration. Installed in a temporary isolated lint environment without changing project dependencies. |
+| Strict OpenSpec validation and `git diff --check` | Passed; final task/diff reconciliation is recorded by tasks 6.5 and 7.5. |
+
+Shared version declarations remove independent CI pins; mutable upstream image
+tags and Alpine package repositories still prevent a claim of byte-for-byte build
+reproducibility. Local image builds/runtime checks do not establish that GitHub
+ran the new workflow, allocated no runner for a skipped job, or allowed a merge.
+
+### Read-only preflight and pending task 6.4
+
+Authenticated reads as `GustavoPeixoto` confirmed active production `Protect main`
+ruleset **25322253**, no bypass, zero required approvals, and strict/up-to-date
+`Validate Release Branch` from GitHub Actions integration **15368**. No production
+setting was changed. A read of the proposed fixture repository returned HTTP 404;
+the creation script also requires absence before performing any writes.
+
+The prepared probe targets only the public disposable repository
+`GustavoPeixoto/php-qa-scope-skip-fixture-20261018`. It publishes a README and a
+minimal workflow with the same check name/events/job condition, creates the
+ordinary branch `probe/ordinary-skip` and deliberately failing
+`release/invalid-skip-probe`, opens their PRs to fixture `main`, and observes real
+SHA-matched skipped/failed check runs. It then activates fixture rules requiring
+that exact check/integration, up-to-date PRs, zero approvals and no bypass. An
+SHA-matched failing-PR merge must be rejected, followed by a successful ordinary
+PR merge with the skipped check. The repository remains available for inspection
+and separately authorized/manual cleanup. The fixture has no package, secrets,
+publisher, version tags or GitHub Releases; production and App settings stay
+untouched. The existing all-repository App installation may automatically include
+the new fixture, but the probe neither changes that installation nor uses it.
+
+The reviewable probe files are prepared under ignored `tmp/release-skip-probe/`.
+The first approval covers fixture creation, contents/branch/PR writes and ruleset
+activation only. After actual check runs are available, exact PR numbers, head
+SHAs and merge effects must be presented for a separate confirmation before either
+merge attempt. The script separates these phases as `--execute` and
+`--verify-merges`. Both phases have now run with their separate explicit approvals,
+as recorded below.
+Its Python/JSON/workflow syntax checks passed; the script only prints its plan
+without an execution flag. Preparation performed no GitHub writes or local Git
+mutations; approved phase-1 writes are separately recorded below. Each remote
+mutation requires the maintainer's explicit confirmation under `conventions/git.md`.
+Task 6.4 required both merge-enforcement probes to run with approval and fresh
+authenticated evidence; the prior deleted fixture and local simulations could not
+substitute for them. The completed phase-2 evidence is recorded below.
+
+### Authenticated skip-probe phase 1 — 2026-10-18 UTC
+
+The maintainer explicitly authorized the disclosed first batch. Execution from
+**22:48:18 to 22:48:44 UTC** created the public fixture
+[`GustavoPeixoto/php-qa-scope-skip-fixture-20261018`](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018),
+published only its README/minimal workflow, created both fixture branches and PRs,
+observed SHA-matched check runs and activated ruleset **25361371**. A fresh read
+confirmed `refs/heads/main` coverage, active enforcement, no bypass, zero required
+approvals and the strict/up-to-date `Validate Release Branch` check from integration
+**15368**. At the end of phase 1, no merge had been attempted and both PRs were open.
+
+| Fixture PR | Exact head SHA | Actual check conclusion | Ruleset readback state |
+| --- | --- | --- | --- |
+| [#1: Probe ordinary skipped required check](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/1), `probe/ordinary-skip` | `e07fc095d66b35dcfe4a2065285f0fd626f038bf` | `skipped`, [check 117812298126](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/actions/runs/39173831249/job/117812298126), completed at 22:48:34 UTC | `mergeable: true`, `mergeable_state: clean` |
+| [#2: Probe failing release required check](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/2), `release/invalid-skip-probe` | `a22f708e7c52162d50e11844c750dfc459061fd5` | `failure`, [check 117812298257](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/actions/runs/39173831756/job/117812298257), completed at 22:48:39 UTC | `mergeable: true`, `mergeable_state: blocked` |
+
+These are actual remote check conclusions under the new job condition, not local
+simulations. Mergeability readback is useful evidence but does not replace the
+required mutation probes. The next separately confirmed batch must first attempt
+PR #2's exact-SHA `merge` request and require a required-status-check rejection,
+then merge PR #1's exact SHA with method `merge`, updating fixture `main` with a
+merge commit. The fixture has no post-merge publisher; no production refs,
+protections, tags, App credentials or local Git state are changed by these probes.
+At that phase-1 boundary, task 6.4 remained pending the separately authorized merge
+probes. Their subsequent results follow.
+
+### Authenticated skip-probe phase 2 — 2026-10-18 UTC
+
+After reviewing the two exact PRs/head SHAs and confirming that only the temporary
+repository would be affected, the maintainer explicitly authorized proceeding.
+The script re-read both open PR identities and actual check conclusions before
+performing the two SHA-matched `merge` requests, in the approved order.
+
+| Probe | Exact head SHA | Authenticated result |
+| --- | --- | --- |
+| Attempt [fixture PR #2](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/2), method `merge` | `a22f708e7c52162d50e11844c750dfc459061fd5` | HTTP **405**, `Repository rule violations found` and `Required status check "Validate Release Branch" is failing.` No merge occurred; the PR remains open and unmerged. |
+| Merge [fixture PR #1](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/1), method `merge` | `e07fc095d66b35dcfe4a2065285f0fd626f038bf` | Success, `merged: true`, at **22:51:51 UTC**. The skipped required check permitted the zero-review merge, creating commit [`b7c72cc2fc538480cfecd2e3020e5d92acaabbe8`](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/commit/b7c72cc2fc538480cfecd2e3020e5d92acaabbe8) on fixture `main`. |
+
+Final authenticated reads confirmed PR #1 closed/merged at that commit, PR #2
+open/unmerged at its reviewed head, and fixture ruleset **25361371** still active
+on `refs/heads/main`, with no bypass, zero required approvals and strict/up-to-date
+`Validate Release Branch` from integration **15368**. Receipts completed at
+**22:51:53 UTC**. An endpoint audit confirmed every non-read API operation across
+both phases targeted fixture creation or that fixture's contents/refs/PRs/ruleset;
+no production GitHub state or local Git state was mutated.
+
+This completes task 6.4 and all **33/33** tasks. The new proof establishes both
+required-check outcomes through real merge requests, separately from local
+runtime/Composer tests. It does not claim that the Docker workflows were deployed
+to production or that App token issuance/live release publication occurred.
+The temporary public fixture is retained for inspection; its later cleanup is
+separate from the completed change and requires separate authorization or manual
+deletion. No fixture cleanup is represented as already performed.

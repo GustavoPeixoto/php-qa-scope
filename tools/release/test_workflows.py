@@ -16,6 +16,7 @@ import unittest
 from unittest.mock import patch
 
 from release.test_validate import FIXTURES, REPOSITORY
+from release.validate import ReleaseError, validate
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -40,6 +41,24 @@ def block(source, marker):
 AUTHORITY = block(MERGE_WORKFLOW, "- name: Recheck current publication authority")
 CREATE = block(MERGE_WORKFLOW, "- name: Create immutable lightweight release ref")
 ORIGIN = block(PR_WORKFLOW, "- name: Check release origin")
+
+
+def pr_eligible(branch):
+    """Evaluate the actual PR job expression with Actions' case-insensitive startsWith."""
+    expression = re.search(r"^    if: (.+)$", PR_WORKFLOW, re.MULTILINE).group(1)
+    expression = expression.replace("github.event.pull_request.head.ref", repr(branch))
+    return eval(expression, {"__builtins__": {},
+                             "startsWith": lambda value, prefix: value.casefold().startswith(prefix.casefold())})
+
+
+def step_command(source, name):
+    """Read the actual single-line or folded shell command in a named validation step."""
+    section = source.split(f"      - name: {name}\n", 1)[1].split("\n      - name:", 1)[0]
+    command = re.search(r"^        run: (.+)$", section, re.MULTILINE).group(1)
+    if command != ">-":
+        return command
+    body = section.split("        run: >-\n", 1)[1]
+    return " ".join(line.strip() for line in body.splitlines() if line.startswith("          "))
 
 
 def merged_pr(fixture):
@@ -336,11 +355,97 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotIn("secrets.", PR_WORKFLOW)
         self.assertNotIn("app-token", PR_WORKFLOW)
         job_header = PR_WORKFLOW.split("jobs:", 1)[1].split("    steps:", 1)[0]
-        self.assertNotIn("    if:", job_header)
+        self.assertIn("    if: startsWith(github.event.pull_request.head.ref, 'release/')", job_header)
         self.assertIn("name: Validate Release Branch", job_header)
-        self.assertIn("Ordinary PR; no release version required.", PR_WORKFLOW)
+        self.assertNotIn("Ordinary PR", PR_WORKFLOW)
+        self.assertNotIn("        if:", PR_WORKFLOW)
         self.assertIn("github.event.pull_request.head.sha", PR_WORKFLOW)
         self.assertNotIn("${{", block(PR_WORKFLOW, "- name: Check release origin"))
+
+    def test_pr_job_gate_and_release_failures(self):
+        # Model job eligibility, not GitHub's runner allocation or merge enforcement.
+        for branch in ["feature/example", "docs/readme"]:
+            for repository in [REPOSITORY, "fork/repo"]:
+                with self.subTest(branch=branch, repository=repository):
+                    with patch.dict(os.environ, {"HEAD_REPOSITORY": repository, "GITHUB_REPOSITORY": REPOSITORY}):
+                        with patch("builtins.exec") as execute:
+                            if pr_eligible(branch):
+                                exec(compile(ORIGIN, "origin", "exec"), {})
+                            execute.assert_not_called()
+        for fixture in FIXTURES:
+            if not fixture["branch"].startswith("release/"):
+                continue
+            with self.subTest(fixture=fixture):
+                self.assertTrue(pr_eligible(fixture["branch"]))
+                repository = "fork/repo" if fixture.get("fork") else REPOSITORY
+                with patch.dict(os.environ, {"HEAD_REPOSITORY": repository, "GITHUB_REPOSITORY": REPOSITORY}):
+                    if fixture.get("fork"):
+                        with self.assertRaises(SystemExit):
+                            exec(compile(ORIGIN, "origin", "exec"), {})
+                    else:
+                        exec(compile(ORIGIN, "origin", "exec"), {})
+                        args = (fixture["branch"], fixture["manifest"], fixture["tags"], REPOSITORY, repository)
+                        if fixture["ok"]:
+                            self.assertTrue(validate(*args)["release"])
+                        else:
+                            with self.assertRaises(ReleaseError):
+                                validate(*args)
+        before = {"version": "0.1.0"}
+        self.assertTrue(validate("release/v0.1.0", before, [], REPOSITORY, REPOSITORY)["release"])
+        with self.assertRaises(ReleaseError):
+            validate("release/v0.1.0", {"version": "0.2.0"}, [], REPOSITORY, REPOSITORY)
+
+    def test_native_container_commands_and_failure_sequencing(self):
+        for source, manifest_step in [(PR_WORKFLOW, "Validate manifest and lock"),
+                                      (MERGE_WORKFLOW.split("  publish:", 1)[0], "Validate integrated manifest and lock")]:
+            build = step_command(source, "Build shared PHP and Composer tooling")
+            check = step_command(source, manifest_step)
+            with tempfile.TemporaryDirectory(prefix="release workflow ") as temporary:
+                directory = Path(temporary)
+                client = directory / "docker"
+                log = directory / "calls.jsonl"
+                completed = directory / "validated"
+                client.write_text(
+                    '#!/usr/bin/env python3\nimport json,os,sys\n'
+                    'with open(os.environ["DOCKER_CALLS"],"a") as log:log.write(json.dumps(sys.argv[1:])+"\\n")\n'
+                    'sys.exit(19 if sys.argv[1]==os.environ["FAIL_DOCKER"] else 0)\n'
+                )
+                client.chmod(0o755)
+                for failure in ["", "build", "run"]:
+                    with self.subTest(workflow=manifest_step, failure=failure):
+                        log.unlink(missing_ok=True)
+                        completed.unlink(missing_ok=True)
+                        result = subprocess.run(
+                            ["bash", "-e", "-o", "pipefail", "-c", build + "\n" + check + '\n: > "$VALIDATED"'],
+                            cwd=directory, capture_output=True, text=True,
+                            env={**os.environ, "PATH": str(directory) + os.pathsep + os.environ["PATH"],
+                                 "DOCKER_CALLS": str(log), "FAIL_DOCKER": failure,
+                                 "GITHUB_WORKSPACE": str(directory), "VALIDATED": str(completed)},
+                        )
+                        self.assertEqual(19 if failure else 0, result.returncode, result.stderr)
+                        self.assertEqual(not failure, completed.exists())
+                        calls = [json.loads(line) for line in log.read_text().splitlines()]
+                        self.assertEqual(["build", "--file", "docker/php/Dockerfile", "--target", "tooling",
+                                          "--tag", "php-qa-scope-release-tooling", "."], calls[0])
+                        if failure == "build":
+                            self.assertEqual(1, len(calls))
+                        else:
+                            self.assertEqual(["run", "--rm", "--mount",
+                                              f"type=bind,source={directory},target=/workspace,readonly",
+                                              "--workdir", "/workspace", "php-qa-scope-release-tooling", "composer",
+                                              "--no-plugins", "--no-scripts", "validate", "--strict", "--no-check-version"], calls[1])
+            self.assertNotIn("setup-php", source)
+            self.assertNotIn("php-version:", source)
+            self.assertNotIn("tools: composer:", source)
+            self.assertLess(source.index("Checkout exact"), source.index("Build shared PHP"))
+            self.assertLess(source.index("Build shared PHP"), source.index(manifest_step))
+            contract_step = "Validate release contract" if source == PR_WORKFLOW else "Validate integrated release contract"
+            self.assertLess(source.index(manifest_step), source.index(contract_step))
+            container_commands = build + check
+            self.assertNotIn("GH_TOKEN", container_commands)
+            self.assertNotIn("--env", container_commands)
+            self.assertNotIn("--build-arg", container_commands)
+        self.assertLess(PR_WORKFLOW.index("Check release origin"), PR_WORKFLOW.index("Checkout exact"))
 
     def test_workflow_security_invariants(self):
         publisher = MERGE_WORKFLOW.split("  publish:", 1)[1]
@@ -366,7 +471,7 @@ class WorkflowTests(unittest.TestCase):
             for action in re.findall(r"uses: (.+)", source):
                 self.assertRegex(action, r"^[\w/-]+@[0-9a-f]{40} # v?[0-9]")
             self.assertEqual(source.count("checkout@"), source.count("persist-credentials: false"))
-            self.assertIn("tools: composer:2.10.3", source)
+            self.assertNotIn("setup-php", source)
             self.assertIn("composer --no-plugins --no-scripts validate --strict --no-check-version", source)
         self.assertEqual({"validate-release.yml", "create-release-tag.yml"}, {p.name for p in WORKFLOWS.glob("*.yml")})
 

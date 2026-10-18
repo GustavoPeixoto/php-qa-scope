@@ -1,9 +1,10 @@
-"""Exercise the documented commands in the running PHP service, without dependencies."""
+"""Exercise shared PHP images and strict Composer fixtures without package dependencies."""
 
 import copy
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import tempfile
@@ -11,14 +12,41 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-COMMAND = shlex.split(os.environ.get("RELEASE_TEST_COMPOSER", "docker compose exec -T php composer"))
+HOST_ROOT = os.environ.get("RELEASE_TEST_HOST_WORKSPACE", str(ROOT))
+TOOLING_IMAGE = os.environ.get("RELEASE_TEST_TOOLING_IMAGE", "php-qa-scope-release-tooling")
+DEVELOPMENT_IMAGE = os.environ.get("RELEASE_TEST_DEVELOPMENT_IMAGE", "php-qa-scope-release-development")
+RUNTIME = ["docker", "run", "--rm", "--mount", f"type=bind,source={HOST_ROOT},target={ROOT}",
+           "--workdir", str(ROOT), TOOLING_IMAGE]
+COMMAND = shlex.split(os.environ["RELEASE_TEST_COMPOSER"]) if "RELEASE_TEST_COMPOSER" in os.environ else RUNTIME + ["composer"]
 VALIDATE = ["--no-plugins", "--no-scripts", "validate", "--strict", "--no-check-version"]
 
 
 class ComposerTests(unittest.TestCase):
+    def test_shared_runtime_and_development_contract(self):
+        dockerfile = (ROOT / "docker/php/Dockerfile").read_text()
+        php = re.findall(r"^FROM php:([0-9.]+)-", dockerfile, re.MULTILINE)
+        composer = re.findall(r"^COPY --from=composer:([0-9.]+) ", dockerfile, re.MULTILINE)
+        self.assertEqual(1, len(php), "Expected one shared PHP version declaration")
+        self.assertEqual(1, len(composer), "Expected one shared Composer version declaration")
+        versions = []
+        for image, xdebug in [(TOOLING_IMAGE, False), (DEVELOPMENT_IMAGE, True)]:
+            runtime = ["docker", "run", "--rm", "--env", "XDEBUG_MODE=off", image]
+            result = subprocess.run(runtime + ["php", "-r", 'echo json_encode([PHP_VERSION, extension_loaded("xdebug")]);'],
+                                    capture_output=True, text=True, check=True)
+            version, loaded = json.loads(result.stdout)
+            self.assertEqual(php[0], version)
+            self.assertEqual(xdebug, loaded)
+            output = subprocess.run(runtime + ["composer", "--version"], capture_output=True, text=True, check=True).stdout
+            self.assertIn(f"Composer version {composer[0]} ", output)
+            versions.append((version, output.splitlines()[0]))
+        self.assertEqual(versions[0], versions[1])
+        username = re.search(r"^ARG USERNAME=(.+)$", dockerfile, re.MULTILINE).group(1)
+        result = subprocess.run(["docker", "run", "--rm", DEVELOPMENT_IMAGE, "sh", "-ec",
+                                 'test -w "$PWD"; test "$PWD" = "$WORKSPACE_DIR"; id -un; pwd'],
+                                capture_output=True, text=True, check=True)
+        self.assertEqual([username, str(ROOT)], result.stdout.splitlines())
+
     def test_strict_manifest_and_lock_fixtures(self):
-        version = subprocess.run(COMMAND + ["--version"], cwd=ROOT, capture_output=True, text=True, check=True)
-        self.assertIn("Composer version 2.10.3", version.stdout)
         (ROOT / "tmp").mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="release-composer-", dir=ROOT / "tmp") as directory:
             directory = Path(directory)
