@@ -8,20 +8,26 @@ with zero required human approvals. Main's exact required check and up-to-date
 policy are active; maintainer-observed App installation/permissions match the
 authenticated tag bypass, and isolated negative enforcement probes passed.
 Independent reviewer/CODEOWNER availability is not a prerequisite.
-Tasks **23/24** are complete. Actual App token issuance and publication have not
-been exercised. The maintainer deleted the authorized disposable fixture after
-evidence capture; cleanup is complete.
-Real publication (task 4.6) is deferred by explicit maintainer instruction.
+Tasks **23/23** are complete under the infrastructure-only scope. Actual App token
+issuance and publication have not been exercised. The maintainer deleted the
+authorized disposable fixture after evidence capture; cleanup is complete.
+Real publication is outside this change and requires separate future authorization.
 The manifest still has no `version`; a later authorized real release PR supplies it.
 
 ## Current execution scope
 
 The maintainer explicitly requested infrastructure preparation and activation
-without publishing any version now. Task 4.6 remains pending by that instruction;
-no production release branch, version edit, tag, or GitHub Release is authorized
-in this continuation. Authenticated configuration verification, reviewed workflow
-rollout, and protection setup may proceed independently. Full publication
-acceptance remains unverified until a later authorized real release.
+without publishing any version. The subsequent approved scope revision removes
+real publication from this change's task list and completion criteria. No
+production release branch, version edit, tag, or GitHub Release is authorized
+here. Actual App token issuance and full live publication remain unexercised
+limitations, to be verified only in a separately authorized future release.
+They are not unfinished implementation work in this change.
+
+The dated sections below retain historical inspection and rollout evidence,
+including blockers that were later resolved. They describe the state at each
+snapshot; this status section and the completed infrastructure gates below
+describe the final state.
 
 The continuation installed the distribution's GitHub CLI 2.23.0 in the running
 dev environment (no image definition or package files changed). Browser device
@@ -29,9 +35,9 @@ authentication completed as `GustavoPeixoto`, with Git credential-helper
 reconfiguration declined to preserve the existing Git setup. The authorized
 infrastructure branch/PR and main-check update are recorded below; no release ref
 or version was created. Authenticated findings and the
-remaining App/control blockers are recorded below. The maintainer subsequently
-created `Protect main`; its current authenticated readback is recorded separately
-from the earlier snapshots.
+App/control blockers observed at each stage are recorded below. The maintainer
+subsequently created `Protect main`; its current authenticated readback is
+recorded separately from the earlier snapshots.
 
 ## Initial local evidence — 2026-10-17
 
@@ -152,7 +158,7 @@ At that historical stage, activation stopped at the independent-review requireme
 asked whether to identify another reviewer with write access or discuss an
 explicit policy revision for individual maintenance. No invitations, placeholder
 CODEOWNERS, weaker approval settings, ruleset edits, commits, pushes or publication
-were performed. Task 4.6 also remains pending by the explicit no-release instruction.
+were performed. No real release was authorized at that historical stage.
 
 ## Initial zero-approval policy — bootstrap readback
 
@@ -246,7 +252,8 @@ Fresh effective-rule reads confirm the required check and up-to-date policy on
 `main`, the original zero-approval settings, and no main bypass. `Protect releases`
 continues covering `~ALL` with the original restrictions and sole Integration
 bypass `5338805`. App-specific installation/permission proof and isolated negative
-enforcement probes remain outstanding; task 4.6 remains explicitly deferred.
+enforcement probes remained outstanding at that snapshot; real publication had
+not been authorized.
 
 ## Documentation rollout and App identification — 2026-10-17 UTC
 
@@ -268,9 +275,10 @@ maintainer-observed installation/permission evidence, rather than a successful
 App-authenticated API request or an exercised installation token. Fresh CLI API
 readback independently confirms the variable/secret names remain present and the
 active all-tag rules retain the same sole bypass actor. Task 4.2 is complete on
-that combined evidence; credential validity and real publication remain part of
-the explicitly deferred task 4.6. The existing all-repository grant was preserved;
-the workflow requests a token scoped to this repository and contents-write only.
+that combined evidence; credential validity and real publication remain
+unexercised, for verification during a future separately authorized release.
+The existing all-repository grant was preserved; the workflow requests a token
+scoped to this repository and contents-write only.
 
 The activation evidence and convention updates were committed as
 `297306561d9bee72ff8e5582f5a2b8212d225dab` and integrated through ordinary
@@ -366,7 +374,30 @@ The final documentation update passed strict OpenSpec and whitespace validation.
 Its initial push at `06ffd835fd00d5a990b15b64aa93f57e750c7e28` passed all seven
 native pre-push checks in `20261017-234426-519`, without bypass.
 
-## Activation gates and deferred publication
+## Infrastructure-only scope reconciliation — 2026-10-18 UTC
+
+The maintainer approved removing the former real-publication task rather than
+reporting it as executed. The proposal, design, delta requirements and tasks now
+define completion as implemented, activated, validated and documented
+infrastructure. The task list retains its original numbering for historical
+traceability and contains 23 tasks. Task 4.7 aligns this convention/evidence with
+that scope; no live-publication task remains.
+
+This documentation-only continuation preserved the zero-approval policy,
+required check, verified protections, App settings evidence, recovery guidance
+and confirmed fixture deletion. Strict OpenSpec and whitespace checks passed.
+The current update changes no workflow, helper, package code, manifest/lock or
+versioned hook behavior. Authenticated readback before completion found no tags,
+no GitHub Releases and only `main` and `change/protected-release-workflow` branches;
+the manifest still has no `version`. No production release branch, version, tag
+or GitHub Release was introduced. Actual App token issuance and live publication
+remain explicitly unexercised; their future verification is outside this change.
+
+The scope-reconciliation commit `5fb0f16` passed all seven native pre-push checks
+in execution `20261018-002322-302`, without bypass. The schema-4 summary reports
+`passed`, exit 0, with all seven validation outcomes passed.
+
+## Completed infrastructure gates
 
 | Task | Evidence / next action |
 | --- | --- |
@@ -374,8 +405,7 @@ native pre-push checks in `20261017-234426-519`, without bypass.
 | 4.3 | Completed: ordinary-merge, CI and zero-approval settings are authenticated above. Independent reviewer availability is not an activation gate; preserve the confirmed settings. |
 | 4.4 | Completed: ordinary PR #1 integrated the workflows after successful `Validate Release Branch`; the exact GitHub Actions check and up-to-date policy are required, with the existing controls and zero approvals preserved. |
 | 4.5 | Completed: authorized isolated probes prove tag creation/update/deletion, direct main push and failing-check merge denials, plus a successful zero-review merge. Production PR #1 separately proves the ordinary production path. The maintainer deleted the fixture after evidence capture; cleanup is complete. |
-| 4.6 | Explicitly deferred. Do not create a production release branch, add a manifest version or publish any tag/GitHub Release now. A later authorized real release must verify checks, applicable rules, App actor, exact integrated SHA/tag and unchanged prior refs. |
-| 4.7 | Convention and evidence describe the initial zero-approval policy and completed infrastructure gates; real publication acceptance remains separately pending. |
+| 4.7 | Completed: convention and evidence describe infrastructure-only completion, the zero-approval policy, verified gates and fixture cleanup. Actual App token issuance/live publication remain unexercised limitations outside this change. |
 
 Infrastructure acceptance combines authenticated API readback, maintainer-observed
 App installation settings and isolated enforcement evidence. Production publication
@@ -399,4 +429,5 @@ OpenSpec strict validation passed. Final review covered both tracked diffs and t
 new workflow/helper/test/convention files, including the action pins, read-only
 boundary, create-only ref request and the untouched package/hook files. Local
 completion is supported by the separate settings/enforcement evidence above;
-it does not remove the explicitly deferred real publication acceptance.
+it does not claim actual App token issuance or live publication has been exercised.
+That future verification is outside the completed infrastructure change.
