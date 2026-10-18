@@ -8,10 +8,11 @@ when: Whenever preparing, validating, publishing, activating, or recovering a pa
 
 ## Preparation
 
-Infrastructure preparation and activation do not authorize a real release. Keep
-production release branches, manifest version edits, tags and GitHub Releases
-pending until the maintainer explicitly requests publication. Ordinary
-infrastructure PRs need no version change and do not publish a tag.
+Infrastructure preparation and activation do not authorize a real release.
+Infrastructure setup can be completed without executing a release. Production
+release branches, manifest version edits, tags and GitHub Releases belong to a
+future operation explicitly requested by the maintainer. Ordinary infrastructure
+PRs need no version change and do not publish a tag.
 
 Use an ordinary same-repository PR into `main`, from `release/vX.Y.Z`.
 The branch is authoritative; the root `composer.json` must declare the identical
@@ -81,9 +82,11 @@ a fallback version.
 
 ## Activation gates
 
-Infrastructure activation requires verified remote controls; actual publication
-acceptance remains separate and pending until a later authorized real release.
-See the change's `verification.md` for dated evidence and remaining blockers.
+Infrastructure activation requires verified remote controls and aligned
+operational documentation. A real release is outside infrastructure setup's
+completion scope. Actual App token issuance and live publication remain
+unexercised until separately verified; infrastructure evidence must not claim
+they passed. See the change's `verification.md` for dated evidence and its limits.
 
 The initial single-maintainer policy requires PRs and automatic checks with
 **zero required human approvals**. Independent reviewers, mandatory CODEOWNER
@@ -131,10 +134,14 @@ evidence and its limits. No real release or App token issuance was exercised.
    can merge with zero approvals from others. Do not disable rules or create
    disposable production tags. Configuration readback alone does not prove these
    mutations are rejected.
-6. Keep real publication acceptance pending during infrastructure work. Only after
-   separate maintainer authorization, publish the real next release through its
-   manifest-change PR, re-read current tags, confirm the App actor and exact
-   integrated SHA, and verify existing refs are unchanged.
+
+After these infrastructure gates are verified and the guidance/evidence aligned,
+infrastructure setup may be completed without a real publication. A later release
+requires separate maintainer authorization. For that operation, use its
+manifest-change PR, re-read current tags, confirm actual App token issuance and
+the publishing actor, verify the exact tag/integrated SHA, and confirm existing
+refs are unchanged. This future live verification is not unfinished
+infrastructure work.
 
 ## Recovery and rollback
 
@@ -172,4 +179,6 @@ PYTHONPATH=tools python3 -B -m unittest discover -s tools/release -p 'test_*.py'
 ```
 
 Keep local fixture evidence separate from authenticated protection verification
-and the controlled real release. Unverified activation tasks remain unchecked.
+and any future authorized live publication. Unverified infrastructure gates remain
+incomplete; unexercised live credentials/publication are recorded limitations
+outside infrastructure setup's completion scope.

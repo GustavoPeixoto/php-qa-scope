@@ -138,7 +138,7 @@ PR validation SHALL use read-only permissions without App credentials. The publi
 
 Before infrastructure activation is declared complete, `main` SHALL require PRs, zero required human approvals, and `Validate Release Branch` plus existing required CI. Workflow and ownership changes SHALL follow the same PR/check policy. Independent reviewers, mandatory CODEOWNER review, stale-approval dismissal and approval of the latest push SHALL NOT be prerequisites in this initial single-maintainer phase. Main protection SHALL retain deletion/force-push blocks and an empty bypass list. Tag protections SHALL block ordinary users/tokens from creating, updating, or deleting protected tags and allow the verified App to create release tags; existing `~ALL` tag coverage SHALL be preserved. Merge queue integration SHALL remain outside this capability's initial supported topology.
 
-The required release check SHALL be added only after it has run on an ordinary PR. An initial ruleset requiring PRs without required status checks SHALL be treated as partial bootstrap, not completed activation. Real publication acceptance SHALL remain separate from infrastructure activation.
+The required release check SHALL be added only after it has run on an ordinary PR. An initial ruleset requiring PRs without required status checks SHALL be treated as partial bootstrap, not completed activation. Real publication acceptance SHALL remain separate from infrastructure activation. Completion of infrastructure setup SHALL NOT require executing a real release.
 
 #### Scenario: Main requires PRs and successful checks
 - **WHEN** a contributor attempts a direct push to `main` or a PR merge with failed required checks
@@ -166,12 +166,13 @@ The required release check SHALL be added only after it has run on an ordinary P
 
 ### Requirement: Release operation and recovery are documented
 
-Durable contributor guidance SHALL describe preparing a release by editing `composer.json`, the initial version and successor rules, required controls, publication failures, and recovery without retagging. It SHALL distinguish Git tags from GitHub Releases and explain Packagist's VCS version discovery. Live acceptance SHALL NOT publish disposable test versions in the production release sequence. Infrastructure preparation and activation SHALL NOT imply authorization to publish a real release; live publication acceptance SHALL remain pending until the maintainer separately authorizes it.
+Durable contributor guidance SHALL describe preparing a release by editing `composer.json`, the initial version and successor rules, required controls, publication failures, and recovery without retagging. It SHALL distinguish Git tags from GitHub Releases and explain Packagist's VCS version discovery. Live acceptance SHALL NOT publish disposable test versions in the production release sequence. Infrastructure preparation and activation SHALL NOT imply authorization to publish a real release. Live publication acceptance SHALL belong to a separately authorized future release operation, outside infrastructure setup's completion scope. Guidance SHALL disclose actual App token issuance and live publication as unexercised until they have been verified, without claiming that infrastructure evidence proves either.
 
 #### Scenario: Infrastructure advances without a release
 - **WHEN** infrastructure is prepared and activated through ordinary PRs before the maintainer authorizes a real release
 - **THEN** that work SHALL NOT require a production release branch or a manifest version declaration and SHALL NOT publish a tag or GitHub Release
-- **AND** live publication acceptance SHALL remain pending rather than being reported as completed
+- **AND** guidance SHALL disclose actual App token issuance and live publication as unexercised
+- **AND** the absence of a real release SHALL NOT block completion of the implemented, activated, validated and documented infrastructure
 
 #### Scenario: Release when product changes are already merged
 - **WHEN** all product changes are already on `main` and a maintainer prepares the next release
