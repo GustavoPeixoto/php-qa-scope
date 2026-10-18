@@ -32,7 +32,7 @@
 
 ## 5. Integrated acceptance and artifact consistency
 
-The checks below were completed for the revised approval/activation contract. The subsequent infrastructure-only scope revision removes the former real-publication task without claiming its execution; only task 4.7 is reopened for the resulting operational-documentation alignment. Original task numbering is retained so historical task references remain identifiable.
+The checks below were completed for the revised approval/activation contract. The subsequent infrastructure-only scope revision removes the former real-publication task without claiming its execution; only task 4.7 was reopened for the resulting operational-documentation alignment, with completion recorded by its checkbox. Original task numbering is retained so historical task references remain identifiable.
 
 - [x] 5.1 Run release helper/publisher fixture suites, workflow syntax/security checks and the integrated event-to-create-ref simulation against the revised `release-tagging` contract; cover the zero-approval path, blocked direct/failed-check updates and incomplete PR-only bootstrap through the protection fixtures/evidence from group 4, and verify no package CLI or local pre-push behavior changed.
 - [x] 5.2 Review proposal/design/spec/task parity and references after the policy revision; verify zero required approvals, provisioned infrastructure, risks, recovery, bootstrap/check gates and the distinction from future live publication are self-contained without temporary/unversioned dependencies. Task 4.7 tracks the subsequent operational-documentation alignment for the infrastructure-only scope revision.

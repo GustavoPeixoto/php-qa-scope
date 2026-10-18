@@ -393,6 +393,10 @@ the manifest still has no `version`. No production release branch, version, tag
 or GitHub Release was introduced. Actual App token issuance and live publication
 remain explicitly unexercised; their future verification is outside this change.
 
+The scope-reconciliation commit `5fb0f16` passed all seven native pre-push checks
+in execution `20261018-002322-302`, without bypass. The schema-4 summary reports
+`passed`, exit 0, with all seven validation outcomes passed.
+
 ## Completed infrastructure gates
 
 | Task | Evidence / next action |
