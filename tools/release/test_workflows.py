@@ -1,4 +1,4 @@
-"""Execute actual workflow-owned code against mocked GitHub responses.
+"""Execute release authority and workflow commands against mocked GitHub responses.
 
 Only Python's standard library is used. Syntax/security linters run separately.
 """
@@ -16,7 +16,8 @@ import unittest
 from unittest.mock import patch
 
 from release.test_validate import FIXTURES, REPOSITORY
-from release.validate import ReleaseError, validate
+from release.contract import ReleaseError, validate
+from release import authority
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -38,7 +39,6 @@ def block(source, marker):
     return "\n".join(body)
 
 
-AUTHORITY = block(MERGE_WORKFLOW, "- name: Recheck current publication authority")
 CREATE = block(MERGE_WORKFLOW, "- name: Create immutable lightweight release ref")
 ORIGIN = block(PR_WORKFLOW, "- name: Check release origin")
 
@@ -59,6 +59,15 @@ def step_command(source, name):
         return command
     body = section.split("        run: >-\n", 1)[1]
     return " ".join(line.strip() for line in body.splitlines() if line.startswith("          "))
+
+
+def checkout_step(source):
+    """Select the single checkout by action within a job-scoped workflow section."""
+    steps = re.split(r"(?=^      - name: )", source, flags=re.MULTILINE)
+    matches = [step for step in steps if re.search(r"^        uses: actions/checkout@", step, re.MULTILINE)]
+    if len(matches) != 1:
+        raise AssertionError("Expected one checkout in the selected job")
+    return matches[0]
 
 
 def merged_pr(fixture):
@@ -130,7 +139,7 @@ class PublisherHarness:
             with patch.dict(os.environ, {"GITHUB_REPOSITORY": REPOSITORY, "GITHUB_EVENT_PATH": str(event_path),
                                          "GITHUB_OUTPUT": str(output), "GH_TOKEN": "read-only-fixture"}), patch("subprocess.run", self.request):
                 try:
-                    exec(compile(AUTHORITY, "workflow-authority", "exec"), {})
+                    authority.main()
                 except Exception:
                     if output.exists():
                         raise AssertionError("Failed validation published outputs")
@@ -139,7 +148,7 @@ class PublisherHarness:
 
 
 class WorkflowTests(unittest.TestCase):
-    def test_same_fixtures_execute_actual_inline_logic(self):
+    def test_same_fixtures_execute_actual_authority_entry_point(self):
         for fixture in FIXTURES:
             with self.subTest(fixture=fixture):
                 harness = PublisherHarness(fixture)
@@ -437,7 +446,7 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotIn("setup-php", source)
             self.assertNotIn("php-version:", source)
             self.assertNotIn("tools: composer:", source)
-            self.assertLess(source.index("Checkout exact"), source.index("Build shared PHP"))
+            self.assertLess(source.index("uses: actions/checkout@"), source.index("Build shared PHP"))
             self.assertLess(source.index("Build shared PHP"), source.index(manifest_step))
             contract_step = "Validate release contract" if source == PR_WORKFLOW else "Validate integrated release contract"
             self.assertLess(source.index(manifest_step), source.index(contract_step))
@@ -445,27 +454,45 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotIn("GH_TOKEN", container_commands)
             self.assertNotIn("--env", container_commands)
             self.assertNotIn("--build-arg", container_commands)
-        self.assertLess(PR_WORKFLOW.index("Check release origin"), PR_WORKFLOW.index("Checkout exact"))
+        self.assertLess(PR_WORKFLOW.index("Check release origin"), PR_WORKFLOW.index("uses: actions/checkout@"))
 
     def test_workflow_security_invariants(self):
         publisher = MERGE_WORKFLOW.split("  publish:", 1)[1]
         validation = MERGE_WORKFLOW.split("  publish:", 1)[0]
-        self.assertNotIn("checkout@", publisher)
-        self.assertNotIn("tools/release", publisher)
+        automation = checkout_step(publisher)
+        self.assertIn("uses: actions/checkout@", automation)
+        self.assertIn("repository: ${{ github.repository }}", automation)
+        self.assertIn("ref: ${{ github.workflow_sha }}", automation)
+        self.assertNotIn("          path:", automation)
+        self.assertNotIn("sparse-checkout", automation)
+        self.assertIn("persist-credentials: false", automation)
+        self.assertNotIn("merge_commit_sha", automation)
+        self.assertNotIn("secrets.", automation)
+        self.assertLess(publisher.index("uses: actions/checkout@"), publisher.index("id: authority"))
+        self.assertEqual("python3 -I -B tools/release/authority.py",
+                         step_command(MERGE_WORKFLOW, "Recheck current publication authority"))
         self.assertNotIn("secrets.", validation)
         self.assertIn("needs: validate", publisher)
         gates = re.findall(r'    if: >-\n((?:      .+\n)+)', MERGE_WORKFLOW)
         self.assertEqual(2, len(gates))
         self.assertEqual(gates[0], gates[1])
         self.assertIn("group: protected-release-publication\n      cancel-in-progress: false", publisher)
-        self.assertNotIn("${{", AUTHORITY)
+        self.assertNotIn("${{", (ROOT / "tools/release/authority.py").read_text())
         self.assertLess(publisher.index("id: authority"), publisher.index("id: app-token"))
         self.assertIn("repositories: ${{ github.event.repository.name }}", publisher)
         self.assertIn("permission-contents: write", publisher)
         self.assertEqual(1, publisher.count("steps.app-token.outputs.token"))
         self.assertIn("GH_TOKEN: ${{ steps.app-token.outputs.token }}", publisher)
         self.assertIn("pull-requests: read", publisher)
+        for job, ref in [(PR_WORKFLOW, "github.event.pull_request.head.sha"),
+                         (validation, "github.event.pull_request.merge_commit_sha")]:
+            checkout = checkout_step(job)
+            self.assertIn("ref: ${{ " + ref + " }}", checkout)
+            self.assertNotIn("sparse-checkout:", checkout)
+            self.assertNotIn("          path:", checkout)
         for source in [PR_WORKFLOW, MERGE_WORKFLOW]:
+            self.assertEqual(source.count("uses: actions/checkout@"),
+                             source.count("      - name: Checkout repository\n"))
             self.assertIn("permissions:\n  contents: read", source)
             self.assertNotIn("pull_request_target:", source)
             for action in re.findall(r"uses: (.+)", source):

@@ -61,7 +61,7 @@ With no stable baseline, the first release SHALL be `0.1.0`. Given baseline `M.m
 
 `docker/php/Dockerfile` SHALL be the shared source of PHP and Composer version declarations for development and release validation. It SHALL provide `base -> tooling -> development`, with the existing PHP reference in `base`, a single shared Composer provision in `tooling`, and `development` inheriting that stage. This refactor SHALL preserve the current version values. The `tooling` target SHALL build independently of development-only workspace arguments and SHALL exclude Xdebug and its PIE/build setup. The `development` target SHALL retain its existing Xdebug, user/workspace configuration and development behavior, and SHALL remain the target used by Compose and Dev Containers.
 
-Both `Validate Release Branch` and `Validate Merged Release` SHALL replace `shivammathur/setup-php` with a direct build of the `tooling` target from their exact checked-out commits and SHALL execute strict Composer validation in the resulting image against that checkout. The proposed head SHA SHALL be used before merge and the integrated SHA after merge. Workflow and test configuration SHALL NOT introduce independent PHP/Composer version pins. CI SHALL NOT require local `.env` files, a running Compose service or development workspace setup. Python and GitHub CLI validation SHALL remain on the runner, and App credentials and GitHub API tokens SHALL NOT be supplied to image builds or Composer containers. The publisher's existing credential-isolation and no-checkout/no-repository-code-execution requirements SHALL remain unchanged.
+Both `Validate Release Branch` and `Validate Merged Release` SHALL replace `shivammathur/setup-php` with a direct build of the `tooling` target from their exact checked-out commits and SHALL execute strict Composer validation in the resulting image against that checkout. The proposed head SHA SHALL be used before merge and the integrated SHA after merge. Workflow and test configuration SHALL NOT introduce independent PHP/Composer version pins. CI SHALL NOT require local `.env` files, a running Compose service or development workspace setup. Python and GitHub CLI validation SHALL remain on the runner, and App credentials and GitHub API tokens SHALL NOT be supplied to image builds or Composer containers. The publisher SHALL preserve credential isolation and SHALL execute only release automation loaded from the executing workflow revision, as defined by the modular-authority and credential-isolation requirements below; it SHALL NOT build or run package Dockerfiles/images.
 
 #### Scenario: Shared runtime parity
 - **WHEN** the tooling and development targets are built from the same checkout
@@ -166,9 +166,75 @@ The publisher SHALL create tags without updating or deleting existing references
 - **WHEN** the Git API rejects or fails tag creation
 - **THEN** the workflow SHALL report failure without moving any tag or automatically selecting another version
 
+### Requirement: Modular release validation and publication authority
+
+The inline `authority` Python implementation SHALL be extracted to `tools/release/authority.py`. The checkout-validation entry point `validate.py` and the publication-authority entry point SHALL use a single shared implementation of canonical version parsing, branch/manifest agreement, repository/base eligibility, duplicate-target rejection, stable-baseline selection, and exact version succession. Read-only GitHub API calls and complete tag enumeration SHALL also have a shared implementation. These modules SHALL use the Python standard library and the existing GitHub CLI without installing dependencies or importing package code. Shared contract evaluation SHALL accept explicit inputs without reading files, environment variables, or remote state and without producing GitHub outputs.
+
+`validate.py` SHALL retain its existing CLI options, environment defaults, JSON success/error output and exit-status behavior, local manifest/tag-fixture support, and ordinary-branch skip behavior. Publication authority SHALL explicitly require an eligible release and SHALL NOT treat an ordinary-branch skip as successful authorization. API transports, both post-merge job conditions, the validation dependency, and existing version/publication policies SHALL remain unchanged by this refactor.
+
+#### Scenario: Shared rules with fresh publication inputs
+- **WHEN** checkout validation and publication authority evaluate release metadata
+- **THEN** both entry points SHALL invoke the same shared contract implementation
+- **AND** authority SHALL independently collect current remote tags within the serialized publisher instead of reusing a prior validation result or tag snapshot
+- **AND** stale versions and existing target tags SHALL fail before App-token issuance
+
+#### Scenario: Validation entry point remains compatible
+- **WHEN** a caller uses the existing validation CLI or its local manifest/tag-fixture inputs
+- **THEN** success/error JSON, exit statuses, and ordinary-branch handling SHALL preserve the existing behavior
+- **AND** publication authority SHALL reject a non-release event rather than emit publication outputs
+
+#### Scenario: Publication-specific checks remain mandatory
+- **WHEN** authority evaluates a closed-PR event
+- **THEN** it SHALL re-read and validate the PR identity, merged state, base, origin, canonical branch, and integrated SHA against the event
+- **AND** it SHALL validate and decode the manifest response for that exact integrated SHA before applying the common contract to current tags
+- **AND** malformed API data, incomplete tag pagination, PR/SHA mismatches, or invalid metadata SHALL prevent successful publication authority
+
+#### Scenario: Canonical authority outputs
+- **WHEN** all publication checks succeed
+- **THEN** the existing step ID `authority` SHALL expose `tag=vX.Y.Z` and `sha=<verified integrated SHA>` through `GITHUB_OUTPUT`
+- **AND** its script SHALL NOT create tags or request an App token
+- **AND** failed authority checks SHALL emit no successful publication outputs and SHALL prevent the token and create-ref steps from running
+
+### Requirement: Consistent release checkout names
+
+Every checkout step in `validate-release.yml` and `create-release-tag.yml` SHALL be named exactly `Checkout repository`. This SHALL include the proposed-commit validation, integrated-commit validation, and publication-automation checkouts. Naming and destination changes SHALL NOT change job names or required-check identity, action pins, conditions, dependencies, permissions, selected commits, or checkout scope. The content-validation jobs SHALL retain their full proposed/integrated checkouts; the publisher SHALL use a standard full checkout from `github.workflow_sha`.
+
+#### Scenario: All three checkout labels match
+- **WHEN** the two release workflows are inspected after the checkout-presentation update
+- **THEN** all three checkout steps SHALL have the exact name `Checkout repository`
+- **AND** their existing PR-head, integrated-commit, and executing-workflow revision selectors SHALL remain associated with their respective jobs
+- **AND** the required `Validate Release Branch` job/check name SHALL remain unchanged
+
+#### Scenario: Standard checkout configuration across jobs
+- **WHEN** the three release checkout steps are configured
+- **THEN** none SHALL set `sparse-checkout` or `sparse-checkout-cone-mode`
+- **AND** the publisher SHALL retain its executing-workflow revision, default workspace and disabled credential persistence
+- **AND** package files present in that full checkout SHALL NOT be executed by publication authority
+
+### Requirement: Publication automation has an explicit revision
+
+The publisher SHALL load `authority.py` and its shared release-automation modules from the same repository at the exact commit identified by `github.workflow_sha`, in the default job workspace without setting the checkout action's `path` input, using a standard full checkout with persisted checkout credentials disabled. All imported release-automation modules SHALL come from that selected revision. The automation revision SHALL be selected independently of the event/API integrated SHA used to read package metadata and create the tag. Loading and execution SHALL remain inside the existing publisher concurrency group and SHALL precede App-token issuance. The authority step SHALL invoke `python3 -I -B tools/release/authority.py` from the workspace root.
+
+#### Scenario: Automation and package revisions differ
+- **WHEN** the executing workflow revision differs from the PR's integrated SHA
+- **THEN** the publisher SHALL load executable automation from `github.workflow_sha`
+- **AND** it SHALL read the package manifest and create the tag using the verified integrated SHA
+- **AND** it SHALL NOT execute package code or API-returned content to perform publication checks
+
+#### Scenario: Required automation is unavailable
+- **WHEN** the selected automation revision or a required script/module cannot be loaded
+- **THEN** the publisher SHALL fail before App-token issuance or tag creation
+- **AND** it SHALL NOT fall back to a moving branch, PR head, candidate commit, previous-job artifact, another revision, or the removed inline implementation
+
+#### Scenario: Authority executes from the default checkout destination
+- **WHEN** publication automation has been loaded successfully
+- **THEN** `authority.py` and its sibling modules SHALL be available under `tools/release/` in the default job workspace without a custom checkout `path`
+- **AND** authority SHALL execute with `python3 -I -B tools/release/authority.py` before App-token issuance
+- **AND** missing selected scripts or modules SHALL fail without falling back to a candidate checkout, another revision, or the previous `.release-automation` path
+
 ### Requirement: Release credentials remain isolated
 
-PR validation SHALL use read-only permissions without App credentials. The publisher SHALL use a short-lived `release-bot` token generated from `RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY` after successful checks. It SHALL NOT check out repository files, execute package code or checkout-supplied scripts, install dependencies, or expose credentials in outputs or logs.
+PR validation SHALL use read-only permissions without App credentials. The publisher SHALL use a short-lived `release-bot` token generated from `RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY` after successful checks. It MAY load and execute only the release-automation scripts from the explicit workflow revision described above, with read-only normal-token permissions and persisted checkout credentials disabled. It SHALL NOT execute package code, scripts selected from the package-validation checkout, or API-returned content, install dependencies, or expose credentials in outputs or logs. Script loading and authority execution SHALL receive no App private key or installation token; the existing App-token generation step SHALL remain after successful authority checks.
 
 #### Scenario: PR validation executes
 - **WHEN** any PR is validated
@@ -178,6 +244,11 @@ PR validation SHALL use read-only permissions without App credentials. The publi
 - **WHEN** the publisher reaches tag creation after fresh validation
 - **THEN** only the tag-creation step SHALL receive the App token with `Contents: write`
 - **AND** the ordinary `GITHUB_TOKEN` SHALL retain read-only contents permission
+
+#### Scenario: Loading and executing authority precede write credentials
+- **WHEN** the publisher loads its workflow-revision scripts and executes authority
+- **THEN** those steps SHALL have only the existing read-only normal-token permissions and no App credentials
+- **AND** a script-loading or authority failure SHALL prevent token generation and reference creation
 
 ### Requirement: Main and tag protections gate operational readiness
 

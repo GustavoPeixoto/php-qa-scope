@@ -89,14 +89,59 @@ environment, review the diff, and confirm no dependency versions changed before
 rerunning validation. Do not run this recovery command unless a stale lock needs
 repair; it may contact configured repositories.
 
+All three checkout steps across the two release workflows are named
+`Checkout repository`. PR validation selects the exact proposed head, integrated
+validation selects `merge_commit_sha`, and publication selects `github.workflow_sha`.
+The common step label does not change job/check names or revision selection.
+
 After an eligible merge, `Validate Merged Release` checks out `merge_commit_sha`
 without persisted credentials and repeats validation. Squash and rebase releases
-also use that integrated SHA. The dependent publisher has no checkout and imports
-no repository code. It independently reads the PR, immutable manifest, and fresh
-remote tag pages with a read-only token. Only after those checks pass does it
-request a repository-scoped `release-bot` token with `Contents: write`, using
-`RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY`. Only create-ref receives
-that token. It creates a lightweight `refs/tags/vX.Y.Z` at the verified SHA.
+also use that integrated SHA.
+
+The dependent publisher uses a standard full checkout in the default job
+workspace, from this repository at the exact `github.workflow_sha` containing the
+executing workflow. Persisted credentials are disabled, and no optional checkout
+`path`, `sparse-checkout` or `sparse-checkout-cone-mode` inputs are set. Its command
+remains `python3 -I -B tools/release/authority.py`, executed from the workspace root.
+All three jobs now use normal full checkouts while retaining their own revision
+selectors. Package files being present does not cause them to execute: publication
+runs only the selected release automation and reads the manifest and tag target
+at the separately verified integrated SHA. Missing automation fails before token
+creation without fallback to another revision, package checkout or inline code.
+
+Release automation is divided into four modules:
+
+- `contract.py`: pure eligibility, canonical version, manifest agreement, baseline,
+  duplicate-target and exact-successor rules;
+- `github_api.py`: read-only GitHub API access and complete remote tag enumeration;
+- `validate.py`: the existing checkout-validation CLI, with its environment defaults,
+  local manifest/tag fixtures, JSON results and ordinary-branch skip behavior;
+- `authority.py`: event/PR/SHA binding, integrated-manifest decoding, fresh tag reads,
+  shared-contract evaluation and the `authority` step's `tag` and `sha` outputs.
+
+Sharing rules does not reuse a prior validation result. Inside the serialized
+publisher, authority independently re-reads the PR, the manifest at the integrated
+SHA and all current tag pages using the normal read-only token. Non-release inputs
+are rejected rather than treated as a successful ordinary-branch skip. The script
+runs with `python3 -I -B`, ignores `PYTHONPATH` and user-site configuration, and
+requires its sibling modules to exist before importing them from the selected
+automation directory. It uses only release-automation modules and the standard
+library; it does not install dependencies, execute package code or Dockerfiles,
+or execute API-returned content.
+
+These scripts are trusted workflow automation under the existing PR/check policy.
+They execute in the publisher job and are not a sandbox: generating the App token
+later does not make arbitrary scripts safe. Both post-merge event conditions,
+API-based operations and the preceding strict Composer checks remain unchanged.
+
+Only after script loading and authority checks succeed does the publisher request
+a repository-scoped `release-bot` token with `Contents: write`, using
+`RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY`. Loading and authority receive
+no App credentials; only the create-ref step receives the installation token.
+That permission covers repository contents and is not limited to one tag; the
+workflow restricts its use to creating a lightweight `refs/tags/vX.Y.Z` at the
+verified integrated SHA. The normal token retains `contents: read` and the
+publisher's `pull-requests: read` grant.
 
 Publication is serialized repository-wide with `cancel-in-progress: false`.
 GitHub can replace a pending concurrency run; this is not a durable release queue.
