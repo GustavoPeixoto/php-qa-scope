@@ -14,6 +14,7 @@ import uuid
 import unittest
 
 from test_preflight import repository
+from openspec_test_fixture import create_project, add_invalid_change
 
 PROJECT = Path(__file__).resolve().parents[2]
 LEFTHOOK = os.environ.get("QA_HOOKS_TEST_LEFTHOOK") or shutil.which("lefthook")
@@ -68,6 +69,32 @@ def assert_layout(case, run, summary, complete=True):
                     case.assertEqual(child["receipt"], str(directory / "create.done.json"))
 
 
+def assert_openspec(case, run, summary, report_root, expected):
+    """Assert real native bulk evidence and all seven independent outcomes."""
+    failed = any(not valid for _, _, valid in expected)
+    case.assertEqual(len(summary["validations"]), 7)
+    case.assertEqual(summary["status"], "failed" if failed else "passed")
+    local = summary["validations"][-1]
+    case.assertEqual((local["validation_id"], local["status"], local["exit_code"]),
+                     ("openspec", "failed" if failed else "passed", int(failed)))
+    case.assertTrue(all(c["report_valid"] for c in summary["validations"]))
+    case.assertTrue(all(c["status"] == "passed" for c in summary["validations"][:-1]))
+    bulk = json.loads((run / local["report"]).read_text())
+    case.assertEqual(bulk["root"], {"path": report_root, "source": "nearest"})
+    case.assertEqual(len(bulk["items"]), len(expected))
+    case.assertEqual({(i["id"], i["type"], i["valid"]) for i in bulk["items"]}, expected)
+    case.assertEqual(bulk["summary"]["totals"], {
+        "items": len(expected), "passed": sum(valid for _, _, valid in expected),
+        "failed": sum(not valid for _, _, valid in expected),
+    })
+    for item in bulk["items"]:
+        if item["valid"]:
+            case.assertEqual(item["issues"], [])
+        else:
+            case.assertTrue(any(i["level"] == "ERROR" and "scenario" in i["message"]
+                                for i in item["issues"]))
+
+
 def old_flat_run(root):
     old = root / "logs/prepush/20000101-000000-000"
     (old / "results").mkdir(parents=True)
@@ -79,12 +106,12 @@ def old_flat_run(root):
 
 
 @contextmanager
-def assembled():
+def assembled(scenario="base"):
     with repository() as (root, git):
         shutil.copytree(PROJECT / "tools/git_hooks", root / "tools/git_hooks")
         shutil.copy2(PROJECT / "tools/git-hooks", root / "tools/git-hooks")
         shutil.copy2(PROJECT / "lefthook.yml", root / "lefthook.yml")
-        shutil.copytree(PROJECT / "openspec", root / "openspec")
+        create_project(root, scenario)
         for name in ("docker-compose.yml", "composer.json", "php-qa-scope.yml", "phpcs.xml",
                      "php-cs-fixer.dist.php", "phpmd.xml", "phpstan.neon", "phpunit.xml.dist"):
             shutil.copy2(PROJECT / name, root / name)
@@ -112,38 +139,32 @@ def assembled():
 
 @unittest.skipUnless(LEFTHOOK, "Install pinned Lefthook or set QA_HOOKS_TEST_LEFTHOOK")
 class HookIntegrationTests(unittest.TestCase):
-    def test_real_openspec_cli_valid_specs_unchecked_tasks_and_invalid_delta(self):
+    def test_real_openspec_cli_synthetic_scenarios(self):
         cli = shutil.which("openspec")
         if not cli:
             self.skipTest("OpenSpec 1.14.0 is required")
         self.assertEqual(subprocess.check_output([cli, "--version"]).decode().strip(), "1.14.0")
-        with assembled() as (root, git, env):
-            fake = Path(env["PATH"].split(os.pathsep)[0]) / "openspec"
-            fake.unlink()
-            fake.symlink_to(cli)
-            for invalid in (False, True):
-                if invalid:
-                    change = root / "openspec/changes/invalid-fixture"
-                    spec = change / "specs/fixture/spec.md"
-                    spec.parent.mkdir(parents=True)
-                    spec.write_text("## ADDED Requirements\n\n### Requirement: Invalid fixture\nThe system SHALL reject this missing-scenario fixture.\n")
-                    (change / "proposal.md").write_text("## Why\nIntentional validation failure.\n")
-                    (change / "tasks.md").write_text("- [ ] Keep this task unchecked.\n")
-                    git("add", "openspec")
-                    git("commit", "-m", "intentional invalid delta")
+        scenarios = {
+            "base": {("fixture-spec", "spec", True)},
+            "pending": {("fixture-spec", "spec", True), ("fixture-pending-change", "change", True)},
+            "invalid": {("fixture-spec", "spec", True), ("fixture-invalid-change", "change", False)},
+            "archived": {("fixture-spec", "spec", True)},
+        }
+        for scenario, expected in scenarios.items():
+            with self.subTest(scenario=scenario), assembled(scenario) as (root, git, env):
+                before = {p.relative_to(root): p.read_bytes()
+                          for p in (root / "openspec").rglob("*") if p.is_file()}
+                fake = Path(env["PATH"].split(os.pathsep)[0]) / "openspec"
+                fake.unlink()
+                fake.symlink_to(cli)
                 result = subprocess.run([root / "tools/git-hooks", "pre-push", "manual"],
                     cwd=root, env=env, capture_output=True, timeout=30)
-                self.assertEqual(result.returncode, int(invalid), result.stdout + result.stderr)
+                self.assertEqual(result.returncode, int(scenario == "invalid"), result.stdout + result.stderr)
                 run = max(root.glob("logs/prepush/*"))
                 summary = json.loads((run / "summary.json").read_text())
-                local = summary["validations"][-1]
-                self.assertEqual(local["status"], "failed" if invalid else "passed")
-                self.assertTrue(local["report_valid"])
-                self.assertEqual(local["exit_code"], int(invalid))
-                bulk = json.loads((run / local["report"]).read_text())
-                self.assertEqual(bulk["root"]["path"], str(root))
-                self.assertTrue(any(i["type"] == "spec" for i in bulk["items"]))
-                self.assertTrue(any(i["id"] == "configure-git-qa-hooks" for i in bulk["items"]))
+                assert_openspec(self, run, summary, str(root), expected)
+                self.assertEqual(before, {p.relative_to(root): p.read_bytes()
+                                         for p in (root / "openspec").rglob("*") if p.is_file()})
                 self.assertEqual(git("status", "--porcelain"), "")
                 assert_layout(self, run, summary)
 
@@ -352,6 +373,24 @@ pathlib.Path('logs/probe.json').write_text(json.dumps({
             self.assertFalse(any(name.startswith(("tools/", "logs/", "conventions/")) for name in names))
 
 
+def prepare_native_sources(root):
+    """Copy native package inputs and generate OpenSpec without Docker or Git."""
+    names = ("src", "tests", "bin", "tools", "conventions", "composer.json", "composer.lock",
+             "php-qa-scope.yml", "phpcs.xml", "php-cs-fixer.dist.php", "phpmd.xml", "phpstan.neon",
+             "phpunit.xml.dist", "lefthook.yml", ".gitignore", ".gitattributes")
+    for name in names:
+        source = PROJECT / name
+        if source.is_dir():
+            shutil.copytree(source, root / name)
+        else:
+            shutil.copy2(source, root / name)
+    create_project(root, "pending")
+    dev_env = root / "docker/dev"
+    dev_env.mkdir(parents=True)
+    shutil.copy2(PROJECT / "docker/dev/.env.example", dev_env / ".env.example")
+    subprocess.run(["bash", "tools/env", "dev"], cwd=root, check=True, capture_output=True)
+
+
 @unittest.skipUnless(os.environ.get("QA_HOOKS_NATIVE_ACCEPTANCE") == "1",
                      "Set QA_HOOKS_NATIVE_ACCEPTANCE=1 for isolated Docker/native-tool acceptance")
 class NativeAcceptanceTests(unittest.TestCase):
@@ -371,20 +410,11 @@ class NativeAcceptanceTests(unittest.TestCase):
             base = Path(directory)
             root = base / "repository"
             root.mkdir()
-            # Copy package inputs; dependency trees are mounted read-only separately.
-            names = ("src", "tests", "bin", "tools", "conventions", "composer.json", "composer.lock",
-                     "php-qa-scope.yml", "phpcs.xml", "php-cs-fixer.dist.php", "phpmd.xml", "phpstan.neon",
-                     "phpunit.xml.dist", "lefthook.yml", ".gitignore", ".gitattributes", "openspec")
-            for name in names:
-                source = PROJECT / name
-                if source.is_dir():
-                    shutil.copytree(source, root / name)
-                else:
-                    shutil.copy2(source, root / name)
-            dev_env = root / "docker/dev"
-            dev_env.mkdir(parents=True)
-            shutil.copy2(PROJECT / "docker/dev/.env.example", dev_env / ".env.example")
-            subprocess.run(["bash", "tools/env", "dev"], cwd=root, check=True, capture_output=True)
+            # Dependency trees are mounted read-only separately.
+            prepare_native_sources(root)
+            baseline = {p.relative_to(root): p.read_bytes()
+                        for p in (root / "openspec").rglob("*") if p.is_file()}
+            expected = {("fixture-spec", "spec", True), ("fixture-pending-change", "change", True)}
             host_root = host_workspace / root.relative_to(PROJECT)
             services = {}
             dev_image = os.environ.get("QA_HOOKS_NATIVE_DEV_IMAGE", dev["Image"])
@@ -491,6 +521,9 @@ rename($base.'.tmp',$base.'.done');
                 self.assertEqual(summary["status"], "passed")
                 self.assertEqual(summary["invocation_mode"], "git")
                 assert_layout(self, reports[0].parent, summary)
+                assert_openspec(self, reports[0].parent, summary, "/php-qa-scope", expected)
+                self.assertEqual(baseline, {p.relative_to(root): p.read_bytes()
+                                            for p in (root / "openspec").rglob("*") if p.is_file()})
                 self.assertTrue(all(c["report_valid"] for c in summary["validations"]))
                 self.assertEqual(required("dev", "git", "status", "--porcelain"), "")
                 remote_refs = required("dev", "git", "--git-dir=.git/native-remote.git", "for-each-ref")
@@ -505,6 +538,7 @@ rename($base.'.tmp',$base.'.done');
                     self.assertEqual(result["status"], "passed")
                     self.assertTrue(all(c["report_valid"] for c in result["validations"]))
                     assert_layout(self, latest.parent, result)
+                    assert_openspec(self, latest.parent, result, "/php-qa-scope", expected)
                     self.assertEqual(required("dev", "git", "--git-dir=.git/native-remote.git", "for-each-ref"), remote_refs)
                 required("dev", "git", "checkout", "main")
                 # Change one managed block to trigger QA Scope without correction/staging hooks.
@@ -539,12 +573,10 @@ rename($base.'.tmp',$base.'.done');
                 self.assertEqual(required("dev", "git", "--git-dir=.git/native-remote.git", "for-each-ref"), remote_refs)
                 # Exercise real OpenSpec findings with otherwise valid native PHP checks.
                 native.write_text(contents)
-                invalid = root / "openspec/changes/invalid-native-fixture"
-                delta = invalid / "specs/fixture/spec.md"
-                delta.parent.mkdir(parents=True)
-                delta.write_text("## ADDED Requirements\n\n### Requirement: Invalid native fixture\nThe system SHALL reject this missing-scenario fixture.\n")
-                (invalid / "proposal.md").write_text("## Why\nIntentional validation failure.\n")
-                (invalid / "tasks.md").write_text("- [ ] Leave this active task unchecked.\n")
+                add_invalid_change(root)
+                invalid = root / "openspec/changes/fixture-invalid-change"
+                invalid_snapshot = {p.relative_to(root): p.read_bytes()
+                                    for p in (root / "openspec").rglob("*") if p.is_file()}
                 required("dev", "git", "add", "phpcs.xml", "openspec")
                 required("dev", "git", "commit", "-m", "intentional OpenSpec rejection")
                 invalid_result = execute("dev", "lefthook", "run", "pre-push")
@@ -556,6 +588,11 @@ rename($base.'.tmp',$base.'.done');
                                  ("openspec", "failed", 1))
                 self.assertTrue(all(c["report_valid"] for c in result["validations"]))
                 self.assertTrue(all(c["status"] == "passed" for c in result["validations"][:-1]))
+                assert_openspec(self, latest.parent, result, "/php-qa-scope",
+                                expected | {("fixture-invalid-change", "change", False)})
+                self.assertEqual(invalid_snapshot, {p.relative_to(root): p.read_bytes()
+                                                    for p in (root / "openspec").rglob("*") if p.is_file()})
+                self.assertEqual(required("dev", "git", "status", "--porcelain"), "")
                 assert_layout(self, latest.parent, result)
                 shutil.rmtree(invalid)
                 required("dev", "git", "add", "openspec")
