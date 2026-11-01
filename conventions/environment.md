@@ -37,7 +37,8 @@ The PHP service is a development and verification environment. This package does
 
 `docker/php/Dockerfile` defines the shared runtime as `base -> tooling -> development`.
 The PHP image version is declared in `base`; Composer is provisioned once in
-`tooling`. Both release-validation jobs build `tooling` directly. The PHP Compose
+`tooling`, together with `unzip` for Composer distribution extraction. Release
+validation and PR QA build `tooling` directly. The PHP Compose
 service and Dev Container retain the `development` target, which adds Xdebug,
 development ini files, utilities, the configured user and workspace.
 
@@ -73,6 +74,51 @@ Docker builds require the referenced registries; cached parent layers reduce
 subsequent builds. Centralized version declarations prevent independently maintained
 PHP/Composer pins in CI and tests. Mutable upstream image tags and package
 repositories still limit byte-for-byte reproducibility.
+
+## Shared Node And OpenSpec Tooling
+
+`docker/dev/Dockerfile` defines `tooling -> development`. The existing Node
+reference, Corepack, and OpenSpec 1.14.0 installation live in `tooling`.
+`development` remains the final default target used by Compose and adds the
+workspace/user setup, OS utilities, Lefthook, context-mode, Headroom, helper
+scripts, and root/user OpenSpec workflow configuration. CI does not run that
+bootstrap or require workspace arguments, environment files, or Compose:
+
+```sh
+docker build --file docker/dev/Dockerfile --target tooling --tag php-qa-scope-pr-node-tooling .
+docker run --rm php-qa-scope-pr-node-tooling openspec --version
+docker build --file docker/dev/Dockerfile --build-arg WORKSPACE_DIR="$PWD" --tag php-qa-scope-pr-node-development .
+docker build --file docker/php/Dockerfile --target tooling --tag php-qa-scope-pr-php-tooling .
+docker build --file docker/php/Dockerfile --target development --build-arg WORKSPACE_DIR="$PWD" --tag php-qa-scope-pr-php-development .
+PR_QA_RUNTIME_TESTS=1 PYTHONPATH=tools python3 -B -m unittest pr_qa.test_runtime -v
+```
+
+The focused runtime tests compare actual Node/OpenSpec and PHP/Composer versions
+and verify development behavior. Runtime probes inspect the completed container
+and collect its retained logs before removal, so a short command's lost attached
+stdout cannot invalidate version evidence. PR QA installs locked development dependencies
+with `composer install --no-interaction --no-ansi --prefer-dist --no-progress`.
+It mounts the writable disposable checkout at the same absolute container path,
+uses the runner UID/GID and a temporary writable home, and passes no Docker socket
+or runner credentials to the tooling containers. Version declarations stay in
+the Dockerfiles; mutable image tags and upstream registries still limit exact
+reproducibility.
+
+For native adapter acceptance, run from a host checkout with Docker available,
+or from a runner exposing the checkout at its identical absolute host path:
+
+```sh
+PR_QA_NATIVE_TESTS=1 PYTHONPATH=tools python3 -B -m unittest pr_qa.test_native -v
+```
+
+This opt-in smoke exports committed HEAD blobs into a retained `tmp/` fixture,
+references the original Git metadata read-only, installs locked dependencies,
+runs all seven checks and aggregation, checks native findings and catchable
+cancellation, and verifies tracked content and the lock remain unchanged.
+It neither creates commits/branches nor uses the contributor's index for writes.
+The current working adapter is exercised against the exported package revision;
+GitHub execution against the implementation's merge revision is verified during
+rollout. Evidence is retained in the reported temporary fixture paths.
 
 ## Environment Topology
 

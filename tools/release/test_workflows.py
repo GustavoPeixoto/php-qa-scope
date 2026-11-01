@@ -500,7 +500,7 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(source.count("checkout@"), source.count("persist-credentials: false"))
             self.assertNotIn("setup-php", source)
             self.assertIn("composer --no-plugins --no-scripts validate --strict --no-check-version", source)
-        self.assertEqual({"validate-release.yml", "create-release-tag.yml"}, {p.name for p in WORKFLOWS.glob("*.yml")})
+        self.assertEqual({"validate-release.yml", "create-release-tag.yml", "qa.yml"}, {p.name for p in WORKFLOWS.glob("*.yml")})
 
 
 if __name__ == "__main__":

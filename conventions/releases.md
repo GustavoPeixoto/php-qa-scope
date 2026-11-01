@@ -150,6 +150,33 @@ tag rules must prevent competing writers. Existing tags always fail, even when
 they already reference the requested SHA. No step moves/deletes a tag or chooses
 a fallback version.
 
+## Required PR QA Rollout
+
+`Pull request QA` validates the temporary merge revision for every PR, including
+ordinary, documentation-only, draft, fork, and release PRs, without changing the
+release job's eligibility or its exact `Validate Release Branch` identity.
+Fork runs can require GitHub platform approval. Its separate `QA Required`
+aggregate succeeds only with all seven successful native checks and retained
+current-revision evidence. A skipped ordinary release job remains compatible
+with successful QA; QA failure cannot satisfy the new gate.
+
+After integrating the workflow through the existing infrastructure PR process,
+observe the emitted `QA Required` name and GitHub Actions integration. Inspect
+the live `Protect main` ruleset and add that exact check alongside every existing
+required check. Preserve up-to-date enforcement, zero approvals, an empty bypass
+list, deletion/force-push protection, and all App/tag protections. Do not extend
+required-check rules to other target branches or modify rules from PR code.
+Git/GitHub mutations require the explicit authorization described in
+[conventions/git.md](git.md); implementation alone does not authorize rollout.
+
+Record dated authenticated rule rereads and live check/enforcement evidence in
+the change's `verification.md`, separately from local tests. Missing access or
+unverified enforcement leaves activation incomplete. Coordinate any mutating
+probe explicitly, using disposable fixtures where appropriate, without merging
+or publishing a release merely to demonstrate behavior. For rollback, restore
+the prior required-check list before removing the workflow, retaining the release
+check and every other protection; do not delete hooks or historical evidence.
+
 ## Activation gates
 
 Infrastructure activation requires verified remote controls and aligned

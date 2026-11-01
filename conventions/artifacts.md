@@ -6,6 +6,32 @@ when: Whenever you need to understand, create, use, move, version, reference, or
 
 # Artifacts Convention
 
+## Pull Request QA Evidence
+
+PR QA stores ignored CI evidence under `logs/pr-qa/`, separate from pre-push
+execution directories and schema-4 job/summary records. Each check retains the
+shared native report path `results/<id>/result.*`, separate `stdout.log` and
+`stderr.log`, Docker preparation/cleanup logs, and available build/install logs.
+For stdout-report tools, only validated stdout is copied to the native report;
+invalid stdout remains available as diagnostics. Native findings retain their
+nonzero code and report. Startup failures have a null native code; interruption
+is unsuccessful. Runner loss can prevent finalization/upload.
+
+`outcomes/<id>.json` is a CI-specific `kind: pr-qa`, schema-version-1 record with
+`check_id`, the tested merge `revision`, `native_exit_code`, `report_valid`,
+`status` (`passed`, `failed`, or `cancelled`), and an optional diagnostic `error`
+(null when absent). Only native zero plus valid evidence can pass. These records
+make no claims about local hook runtime ownership or coordinator completion.
+
+Each always-attempted `qa-<id>` workflow artifact contains that check's `results/`
+and `outcomes/` paths using the repository's configured retention period. Missing
+files and required-upload failure fail QA. Aggregation downloads only this run's
+artifacts under ignored `logs/pr-qa/downloaded/qa-<id>/`, requires the exact seven
+current-revision successful outcomes and upstream matrix success, and reruns the
+shared native validators. Paths come from the shared registry, never outcome
+data. Missing, duplicated, unknown, foreign-revision, invalid or symlinked
+evidence cannot pass. The aggregate also publishes a concise job summary.
+
 ## Definition
 
 Artifacts are inputs, documents, specs, conventions, decisions, handoffs, drafts, and deliverables used to carry project work.

@@ -1,4 +1,11 @@
-FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm
+FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm AS tooling
+
+RUN corepack enable
+
+RUN yarn global add @fission-ai/openspec@1.14.0 \
+ && test "$(openspec --version)" = 1.14.0
+
+FROM tooling AS development
 
 ARG USERNAME=dev
 
@@ -37,15 +44,12 @@ RUN mkdir -p /etc/sudoers.d \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 
-RUN corepack enable
-
 RUN git config --system --add safe.directory ${WORKSPACE_DIR}
 
 RUN CI=1 yarn global add lefthook@2.1.16 \
     && test "$(lefthook version)" = 2.1.16
 
-RUN yarn global add @fission-ai/openspec@1.14.0 \
-    && openspec config set profile custom \
+RUN openspec config set profile custom \
     && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
 
 RUN yarn global add context-mode@1.0.169

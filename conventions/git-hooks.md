@@ -220,6 +220,25 @@ For an authorized rollback, resolve the active hook path with
 only the owned pre-push launcher. Retain logs and unrelated hooks/hook-path settings.
 Reverting versioned configuration alone does not remove an installed launcher.
 
+## PR QA Contract Parity
+
+`tools/pr-qa` imports `qa.command`, `reports.CHECKS`, `valid_native`, and
+`valid_openspec` from `tools/git_hooks/`. CI uses the same seven identities,
+complete scopes, native argv/report options, and report acceptance rules. It
+does not invoke the pre-push coordinator, allocate hook runs, install hooks, or
+reuse local lifecycle/ownership evidence. Existing Composer scripts and hook
+runtime policies remain authoritative and unchanged. CI evidence is documented
+in [conventions/artifacts.md](artifacts.md).
+
+Run adapter and workflow contract tests separately from native PHP QA:
+
+```sh
+PYTHONPATH=tools python3 -B -m unittest discover -s tools/pr_qa -p 'test_*.py'
+```
+
+Runtime image probes are opt-in as documented in the environment convention.
+Changes to shared helpers must also pass the existing hook Python suite above.
+
 ## Pre-push Validation And Result Ownership
 
 The coordinator runs one `lefthook run qa-checks`; Lefthook owns parallelism and
