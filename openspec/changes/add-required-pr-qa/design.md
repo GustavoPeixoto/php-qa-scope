@@ -11,20 +11,22 @@ Only release PR validation currently runs before merge; its workflow targets `ma
 ## Goals / Non-Goals
 
 - Reuse existing validation contracts and runtime declarations while allowing Actions to own job scheduling and lifecycle.
-- Keep CI results independently inspectable and make missing or unsuccessful validations fail the aggregate gate.
+- Keep CI results independently inspectable and require their individual identities through the explicit native main-protection policy.
 - Preserve local hook behavior and default development-image behavior.
 - Do not reuse the pre-push coordinator, its dev marker, local execution IDs, container evidence schema, or installed contributor hooks in CI.
 - Do not expand PHP-version coverage, change dependency versions, adopt merge queues, publish images, or exercise release publication.
 
 ## Decisions
 
-### 1. A dedicated PR workflow and explicit aggregate check
+### 1. A dedicated PR workflow and individual required checks
 
 Add `.github/workflows/qa.yml`, named `Pull request QA`, using `pull_request` types `opened`, `reopened`, `synchronize`, `ready_for_review`, and `edited`. An edited event reruns QA, including base-branch changes; running again for other edits is acceptable. Omit branch/path filters and draft, fork, or release exclusions. Platform-level fork-run approvals continue to apply; the workflow does not bypass them.
 
-Use `ubuntu-24.04`, workflow permissions `contents: read`, SHA-pinned actions consistent with the release workflows, and checkout with `persist-credentials: false`. Check out `github.sha`, the event's temporary merge commit, rather than a moving merge ref or the PR head. Use the same revision for every matrix entry and aggregation checkout. Never fall back to the source SHA. A PR without an available merge revision cannot obtain a successful gate.
+Use `ubuntu-24.04`, workflow permissions `contents: read`, SHA-pinned actions consistent with the release workflows, and checkout with `persist-credentials: false`. Check out `github.sha`, the event's temporary merge commit, rather than a moving merge ref or the PR head. Use the same revision for every matrix entry. Never fall back to the source SHA. A PR without an available merge revision cannot obtain successful required QA.
 
-Use one seven-entry matrix with IDs `qa-scope`, `sniffer`, `fixer`, `md`, `stan`, `test`, and `openspec`, and `fail-fast: false`. Contract tests compare its membership with the shared check registry. Each matrix entry builds only its required tooling image and runs one native check. The matrix displays separate check results, while the standalone aggregate job has the exact name `QA Required`, depends on the matrix, and runs with an always condition when GitHub permits it. It requires a successful matrix conclusion and exactly seven valid successful outcomes for the current revision. No `continue-on-error` may mask a validation or required upload failure.
+Use one seven-entry matrix with IDs `qa-scope`, `sniffer`, `fixer`, `md`, `stan`, `test`, and `openspec`, and `fail-fast: false`. Contract tests compare its membership with the shared check registry. Each matrix entry builds only its required tooling image and runs one native check, emitting the stable name `QA (<id>)`. These seven names are required individually through GitHub's native main protection. There is no aggregate job. No `continue-on-error` may mask a validation or required upload failure.
+
+The explicit merge rule is: all required checks must be present and completed with conclusion `success`, `skipped`, or `neutral`. Missing, pending, running, failed, cancelled, timed-out, or any other result blocks merge. `Validate Release Branch` stays required and conditional, so an ordinary PR's skipped release check is accepted. The required list is not a wildcard: future checks must also be registered. Per-check validation still requires native zero and valid evidence to emit success; skipped/neutral acceptance is a deliberate platform-policy choice rather than proof of native execution.
 
 Group workflow concurrency by workflow and PR number, with cancellation of superseded runs. This saves obsolete work without cancelling checks because a sibling failed. A cancelled run never counts as successful. A generous finite job timeout, initially 30 minutes per check, bounds stalled runners rather than importing the hook's cancellation deadline.
 
@@ -32,7 +34,7 @@ Alternative: extending the release job would couple ordinary QA to its release-o
 
 ### 2. Share command and report helpers through a small CI adapter
 
-Add an executable Python entrypoint `tools/pr-qa` with standard-library implementation and tests under `tools/pr_qa/`. Support check mode (`--check <id> --image <tag> --revision <sha>`) and aggregate mode (`--aggregate <download-directory> --revision <sha>`), with the current checkout as project root. Both modes return nonzero on invalid inputs, execution failure, or validation failure. The revision must match the checked-out `HEAD`; check IDs must belong to the shared registry.
+Use the executable Python entrypoint `tools/pr-qa` with standard-library implementation and tests under `tools/pr_qa/`. Its interface is `--check <id> --image <tag> --revision <sha>`, with the current checkout as project root. It returns nonzero on invalid inputs, execution failure, or validation failure. Remove the former `--aggregate`/`--upstream-result` options and their exclusive code/tests. The revision must match the checked-out `HEAD`; check IDs must belong to the shared registry. This is internal repository automation, with no public package API change.
 
 Import and reuse the existing command builder, `CHECKS`, and native/OpenSpec report validators. Do not duplicate their argv, report schemas, or managed-target semantics. Preserve the current helper imports for hook callers and keep hook execution/backend behavior unchanged. A neutral helper extraction is unnecessary for this change; the CI adapter calls only the side-effect-free contract helpers, never the hook check runner or coordinator.
 
@@ -56,21 +58,19 @@ Each PHP matrix job installs its own dependency tree in its isolated checkout. S
 
 The existing mutable Node and PHP image references remain unchanged. This centralizes version declarations; pinning digests or upgrading versions is outside scope.
 
-### 4. Retain evidence and aggregate defensively
+### 4. Retain and validate evidence per check
 
-Each entry uploads a uniquely named `qa-<id>` artifact containing its available native report, stdout/stderr, and outcome, using an always step and the repository's configured artifact retention. Startup/build/install failures must leave available diagnostics; no missing outcome may be synthesized as success. Hard runner loss may prevent upload, which the aggregate treats as missing evidence. Required artifact-upload failure also fails the matrix job.
+Each entry uploads a uniquely named `qa-<id>` artifact containing its available native report, stdout/stderr, and outcome, using an always step and the repository's configured artifact retention. Startup/build/install failures must leave available diagnostics; no missing outcome may be synthesized as success. Hard runner loss may prevent upload and does not produce native success. Required artifact-upload failure fails that matrix job, whose individual result is required by main protection.
 
-The aggregate job downloads the current workflow run's QA artifacts without secrets or write permissions. Validate the exact identity set against the shared registry, reject duplicate/unknown IDs and mismatched revisions, require each success record and valid native report, and require the upstream matrix conclusion to be success. Use preserved native codes and report paths to rerun the shared report validators. Emit a concise job summary of the seven outcomes and any absent evidence. Put downloaded reports under an ignored directory, separate from the clean checkout used to load the adapter.
-
-Do not evaluate artifact data as code, use it as shell syntax, trust outcome-supplied arbitrary paths, or consult another workflow run's artifacts. Reports are resolved from the known relative paths for each ID. CI artifacts do not replace local pre-push logs or assert local container ownership/removal facts.
+Keep outcomes as downloadable per-check diagnostic records, rather than merge inputs consumed by a central job. Each check validates its report directly through the shared validators, checks its requested revision against HEAD, and uses registry-owned report paths. Remove artifact downloads, combined inventory validation, and the aggregate-only summary. CI artifacts do not replace local pre-push logs or assert local container ownership/removal facts.
 
 ### 5. Extend main protection after the check exists
 
 The current documented `Protect main` ruleset requires `Validate Release Branch` from GitHub Actions and an up-to-date branch, with zero human approvals and no bypass. Treat documented ruleset IDs as discovery hints, not proof of present remote state.
 
-First integrate the workflow through the existing infrastructure PR process. Observe an emitted `QA Required` check, then add that exact check and its GitHub Actions integration to the current ruleset while retaining all existing checks and protections. Do not alter release workflows, App permissions, tag rules, or other target branches' rulesets. The ruleset change happens as a separate administrative rollout action, never inside PR code.
+Update the existing PR #6 on `change/release-validation-tooling` through an additional commit; do not rewrite commits or create another PR. Observe the seven emitted `QA (<id>)` checks for its latest revision and confirm their GitHub Actions integration (currently 15368). Prepare their addition to the current main ruleset while retaining `Validate Release Branch` and every other required check/protection. The aggregate is not currently a required context, so there is no aggregate requirement to undo remotely. Do not alter release workflows, App permissions, tag rules, or other target branches' rulesets. The ruleset change is a separately authorized administrative action, never PR code.
 
-Record local and authenticated remote evidence separately in a dated `verification.md` within this change during implementation. Prove a successful ordinary PR remains eligible with its skipped emitted release job, a failed QA run blocks merge, and zero-review/up-to-date policies remain intact. Coordinate any live enforcement probe explicitly; do not merge a PR, create a release, or weaken protections solely to demonstrate behavior. Use a disposable fixture for mutating enforcement probes when needed, and record limitations on proving the production rule.
+Preserve historical aggregate evidence and append dated current evidence to `verification.md`. Verify the native allowlist of `success`, `skipped`, and `neutral`, the configured required identities, the ordinary skipped release result, and all retained protections. The user declined intentional remote failure probes and additional PRs, and did not authorize reviews or merge. Record unverified enforcement/eligibility scenarios explicitly and keep task 4.3 open while proof is missing. Current green checks on commit `338ae13` are historical after this revision; they cannot certify a new commit.
 
 Document shared tooling in `conventions/environment.md`, validation parity in `conventions/git-hooks.md`, CI evidence in `conventions/artifacts.md`, and the additional required-check activation in `conventions/releases.md`. Keep `README.md` focused on package users. No public PHP API or command changes are required.
 
@@ -87,6 +87,6 @@ Document shared tooling in `conventions/environment.md`, validation parity in `c
 
 1. Implement shared tooling, CI adapter, workflow, and focused tests; verify default development builds and existing release workflow contracts.
 2. Integrate through the existing PR/check policy without a release branch, manifest version change, or tag publication.
-3. Observe the emitted aggregate check and update only the required-check list of the existing main rule.
+3. Observe the seven individual checks on the new revision, then prepare only the required-check-list amendment to the existing main rule for specific authorization.
 4. Record authenticated ruleset/check evidence and enforcement results or explicit verification limits. Activation is incomplete while required evidence is missing.
 5. If rollback is necessary, restore the prior required-check list before removing the workflow; retain the release check and all other protections. Revert the development stage refactor if needed and rebuild/recreate dev through its existing workflow. Do not remove installed hooks or historical evidence as part of rollback.

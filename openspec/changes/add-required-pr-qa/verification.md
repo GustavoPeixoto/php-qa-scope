@@ -1,7 +1,7 @@
 # Verification
 
-The 2026-10-20 evidence below is historical. The dated continuation section records
-the current combined checkout, fresh validation, and rollout decisions.
+The 2026-10-20 evidence and initial 2026-11-01 continuation below are historical.
+Current design and validation are recorded under the individual-check revision.
 
 Date uses America/Sao_Paulo; execution logs extend into 2026-10-21 UTC.
 
@@ -230,3 +230,98 @@ proof. Tasks 4.1–4.3 remain open. The workflow, its eventual PR execution, the
 ruleset amendment, and merge each remain subject to their disclosed authorization
 and verification steps. No remote failure probe, additional PR, release, package
 version change, tag, or archive operation has been performed.
+
+## Individual-check revision — 2026-11-01
+
+### Accepted policy and implementation
+
+The user replaced the aggregate gate with GitHub's native individual required
+checks. The explicit merge condition is: every required check must be present
+and completed with `success`, `skipped`, or `neutral`; every other state or
+conclusion blocks merge, including missing, pending, running, failed, cancelled,
+or timed-out checks. This is an explicit list, not an automatic requirement for
+future checks. Conditional release validation remains skipped on ordinary PRs.
+Skipped/neutral conclusions do not claim that a native validation executed.
+
+The seven emitted names remain `QA (qa-scope)`, `QA (sniffer)`, `QA (fixer)`,
+`QA (md)`, `QA (stan)`, `QA (test)`, and `QA (openspec)`. The revised workflow
+retains only their matrix job, exact temporary-merge checkout, independent
+execution, read-only authority, per-check native validation and always-attempted
+uploads. A required upload failure still fails its own check. The aggregate
+job, central downloads, cross-artifact gate, and internal `--aggregate` and
+`--upstream-result` interfaces have been removed. The check/image/revision
+interface, native reports, per-check outcomes and diagnostics remain.
+
+The proposal, design, delta spec, tasks and contributor conventions now describe
+this policy. Affected completed tasks were reopened for fresh verification.
+Historical aggregate results above remain evidence of the former design, not
+proof of this revision. No public package API, PHP source, Composer scripts,
+dependencies, Dockerfiles, versions, shared hook runtime, or release workflows
+were changed by this revision.
+
+### Fresh local results
+
+Evidence is retained under `tmp/pr-qa-individual-PQJI0U6b/`; the substantive
+results and limits are recorded here independently of that temporary directory.
+
+| Verification | Result |
+| --- | --- |
+| PR QA discovery | 15 tests: 11 passed, four opt-in runtime/native skips |
+| Individual CLI and workflow contracts | Passed: required check/image/revision arguments, removed-flag rejection, unchanged seven matrix IDs/names, one checkout, no aggregate/download job, no failure-masking uploads |
+| Complete release suite | 23 passed on retry; release identity and ordinary skip behavior unchanged |
+| Native adapter acceptance | Two tests passed in 24.601 seconds, no skips, confirmed by mounted completion receipt and container exit 0 |
+| Actionlint 1.7.12 | Passed |
+| Zizmor 1.31.1 | No findings in offline mode |
+| Strict OpenSpec selected-change and project validation | Passed |
+| Whitespace and unchanged package inputs | Passed |
+
+The first release run failed one runtime assertion after its attached Docker
+client returned empty Composer-version stdout. The unchanged suite passed on
+retry. This is retained as a local transport limitation, consistent with the
+earlier confirmed-state/log evidence; no release test was altered to hide it.
+
+Native smoke exported committed package revision
+`338ae1397268047ab1aeea80115d21421653b177` and exercised the revised working
+adapter. Every check passed with its exact identity/revision, genuine zero,
+`report_valid: true`, null error, valid retained native report, and available
+stdout/stderr files. Findings, missing executable startup and SIGTERM were
+verified in controlled local fixtures; owned containers were removed. Native
+evidence is in `tmp/pr-qa-native-pumyssys/` and
+`tmp/pr-qa-cancel-w7nevdtm/`. These are local acceptance fixtures, not remote
+failure probes. Tracked-content and lock comparisons passed.
+
+The two image-version probes and full hook Python suite were not rerun for this
+removal-only revision: Dockerfiles, runtime probes and shared hook code remain
+unchanged. Their historical successful results are recorded above. The native
+adapter's two opt-in cases were executed separately from default discovery.
+
+### PR and protection boundary
+
+The starting checkout was clean on `change/release-validation-tooling` at
+`338ae1397268047ab1aeea80115d21421653b177`. PR #6 is open against `main` and has not
+been merged. Its existing green seven-check/aggregate run belongs to that old
+revision and must not certify the forthcoming update. The new revision still
+needs its authorized commit/push and an update to the same PR's body; no new PR
+or history rewrite is planned. No staging, commit, push, PR edit, review approval,
+merge, ruleset update, stash mutation, release or tag operation was performed
+during this revision's local preparation.
+
+An authenticated ruleset read still showed only `Validate Release Branch`
+(integration 15368) required in `Protect main` (25322253). No aggregate context
+is configured there, so no remote aggregate rule needs undoing. A proposal in
+`ruleset-proposed.json` beside its `ruleset-before.json` snapshot adds the seven
+individual names, also with integration 15368. Comparing the prepared objects
+confirmed that only the required-check list changes; there are eight proposed
+contexts in total. All existing parameters, up-to-date enforcement, zero
+approvals, empty bypass, main deletion/force-push protections are preserved.
+The proposal does not target or change tag protections.
+
+Publication requires a specifically authorized new commit/push/body-edit batch.
+Protection application requires separate authorization after the seven checks
+and their integration have been observed on the new PR revision, followed by
+an authenticated reread. The user's no-review/no-merge and no-intentional-remote-
+failure-probe limits remain in force. Missing ordinary/docs/draft/fork/release
+or blocking evidence remains explicit and task 4.3 stays incomplete. Source for
+the platform conclusion policy is GitHub's required-status-check troubleshooting
+documentation; the full allowlist is stated in this change's own spec and does
+not depend on that external page to be understood.

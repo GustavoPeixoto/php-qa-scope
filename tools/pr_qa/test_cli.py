@@ -1,10 +1,9 @@
-"""Exercise native validators, Docker boundaries, and fail-closed evidence sets."""
+"""Exercise native validators, Docker boundaries, and per-check execution."""
 
 from contextlib import redirect_stdout, redirect_stderr
 import io
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 import unittest
@@ -147,6 +146,20 @@ class AdapterTests(AdapterFixture):
         with self.assertRaises(SystemExit):
             cli.main(["--check", "fixer", "--revision", SHA])
 
+    def test_check_dispatch_and_removed_cli_modes(self):
+        argv = ["--check", "fixer", "--image", "fixture:tooling", "--revision", SHA]
+        with patch.object(cli, "check", return_value=0) as execute:
+            self.assertEqual(0, cli.main(argv))
+        execute.assert_called_once_with(Path.cwd().resolve(), "fixer", "fixture:tooling", SHA)
+        for invalid in (["--aggregate", str(self.root), "--revision", SHA],
+                        argv + ["--upstream-result", "success"],
+                        ["--check", "unknown", "--image", "fixture:tooling", "--revision", SHA],
+                        ["--image", "fixture:tooling", "--revision", SHA],
+                        ["--check", "fixer", "--image", "fixture:tooling"]):
+            with self.subTest(argv=invalid), self.assertRaises(SystemExit) as rejected:
+                cli.main(invalid)
+            self.assertEqual(2, rejected.exception.code)
+
     def test_interrupted_client_is_reaped(self):
         from unittest.mock import Mock
         child = Mock()
@@ -157,58 +170,6 @@ class AdapterTests(AdapterFixture):
                 cli.process(["docker", "start"])
         child.terminate.assert_called_once()
         child.kill.assert_called_once()
-
-
-class AggregateTests(AdapterFixture):
-    def evidence(self):
-        downloaded = self.root / "downloaded"
-        for key in reports.CHECKS:
-            self.execute(key)
-            artifact = downloaded / f"qa-{key}"
-            (artifact / "outcomes").mkdir(parents=True)
-            shutil.copyfile(self.root / f"logs/pr-qa/outcomes/{key}.json", artifact / f"outcomes/{key}.json")
-            shutil.copytree(self.root / f"logs/pr-qa/results/{key}", artifact / f"results/{key}")
-        return downloaded
-
-    def aggregate(self, downloaded, upstream="success"):
-        with patch.object(cli, "validate_revision"):
-            return cli.aggregate(self.root, downloaded, SHA, upstream)
-
-    def test_success_and_upstream_failures(self):
-        downloaded = self.evidence()
-        self.assertEqual(0, self.aggregate(downloaded))
-        for upstream in ("failure", "cancelled", "skipped"):
-            self.assertEqual(1, self.aggregate(downloaded, upstream))
-
-    def test_outcome_contract_failures(self):
-        downloaded = self.evidence()
-        path = downloaded / "qa-fixer/outcomes/fixer.json"
-        original = json.loads(path.read_text())
-        for changes in ({"status": "failed"}, {"status": "cancelled"}, {"status": "skipped"},
-                        {"revision": "b" * 40}, {"check_id": "unknown"}, {"native_exit_code": None},
-                        {"native_exit_code": False}, {"report_valid": False}, {"report": "/etc/passwd"}):
-            path.write_text(json.dumps({**original, **changes}))
-            self.assertEqual(1, self.aggregate(downloaded), changes)
-        path.write_text(json.dumps(original))
-        duplicate = downloaded / "qa-fixer/outcomes/duplicate.json"
-        shutil.copyfile(path, duplicate)
-        self.assertEqual(1, self.aggregate(downloaded))
-        duplicate.unlink()
-        shutil.copytree(downloaded / "qa-fixer", downloaded / "qa-unknown")
-        self.assertEqual(1, self.aggregate(downloaded))
-        shutil.rmtree(downloaded / "qa-unknown")
-        path.unlink()
-        self.assertEqual(1, self.aggregate(downloaded))
-
-    def test_invalid_reports_symlinks_and_missing_artifacts(self):
-        downloaded = self.evidence()
-        path = downloaded / "qa-fixer/results/fixer/result.json"
-        path.write_text("{}")
-        self.assertEqual(1, self.aggregate(downloaded))
-        path.unlink()
-        path.symlink_to(self.root / "logs/pr-qa/results/fixer/result.json")
-        self.assertEqual(1, self.aggregate(downloaded))
-        self.assertEqual(1, self.aggregate(self.root / "absent"))
 
 
 if __name__ == "__main__":

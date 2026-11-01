@@ -24,13 +24,18 @@ is unsuccessful. Runner loss can prevent finalization/upload.
 make no claims about local hook runtime ownership or coordinator completion.
 
 Each always-attempted `qa-<id>` workflow artifact contains that check's `results/`
-and `outcomes/` paths using the repository's configured retention period. Missing
-files and required-upload failure fail QA. Aggregation downloads only this run's
-artifacts under ignored `logs/pr-qa/downloaded/qa-<id>/`, requires the exact seven
-current-revision successful outcomes and upstream matrix success, and reruns the
-shared native validators. Paths come from the shared registry, never outcome
-data. Missing, duplicated, unknown, foreign-revision, invalid or symlinked
-evidence cannot pass. The aggregate also publishes a concise job summary.
+and `outcomes/` paths using the repository's configured retention period. Each
+check validates its own native report against the shared contract and verifies
+the requested revision against HEAD. Invalid or missing reports and a required
+upload failure prevent that job from succeeding. Paths come from the shared
+registry, never outcome data. Outcomes remain downloadable diagnostics; there is
+no central download, cross-artifact inventory, or aggregate summary job.
+
+Main protection requires the emitted individual `QA (<id>)` results. Its explicit
+native acceptance set is completed `success`, `skipped`, or `neutral`; a skipped
+or neutral job is not evidence that native validation ran. Missing, pending,
+running, or any other conclusion blocks the required-check condition. Future
+check identities must be added to the protection list separately.
 
 ## Definition
 

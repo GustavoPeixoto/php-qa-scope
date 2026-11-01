@@ -11,14 +11,14 @@ The seven full-scope pre-push validations currently protect local pushes, but or
 - Reuse the pre-push command definitions, native report validators, complete configuration scopes, and report options without invoking its dev-only coordinator.
 - Add `tooling -> development` stages to `docker/dev/Dockerfile`: share the existing Node reference, Corepack, and pinned OpenSpec installation; retain interactive tooling and configuration in `development`.
 - Reuse the PHP/Composer `tooling` target and locked development dependencies for the six PHP checks; move the existing `unzip` utility into that shared stage so Composer can extract dependency distributions.
-- Retain available reports and diagnostics and publish a stable aggregate check named `QA Required`, which succeeds only when all seven validations succeed.
-- Add that emitted check to the existing `main` ruleset, preserving release checks and protections, and record dated remote activation evidence separately from local verification.
+- Retain each check's available reports, diagnostics, and outcomes; its native execution, report validation, and required artifact upload determine its own job result. No aggregate job or artifact-download gate is needed.
+- Require the seven emitted `QA (<id>)` checks individually in the existing `main` ruleset alongside `Validate Release Branch`. All required checks must be present and completed with `success`, `skipped`, or `neutral`; every other state or conclusion blocks merge. Preserve release checks and protections and record dated remote activation evidence separately from local verification.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `repository-pr-qa`: Full-scope pull request QA, shared development/CI tooling and validation contracts, retained diagnostic evidence, and required-check activation on `main`.
+- `repository-pr-qa`: Full-scope pull request QA, shared development/CI tooling and validation contracts, retained diagnostic evidence, and individual required-check activation on `main`.
 
 ### Modified Capabilities
 
@@ -35,4 +35,4 @@ None. Existing hook runtime policies and release eligibility, validation, and pu
 
 ## Open Questions
 
-No unresolved product or design questions. **High-priority activation prerequisite:** authenticated access to inspect and update the existing `main` ruleset and observe real PR checks must be available during rollout. This access has not been verified while preparing the proposal; without it, implementation can be locally verified but remote activation must remain incomplete.
+No unresolved product or design questions. The accepted 2026-11-01 revision removes only the aggregate gate and its exclusive code, retaining the seven checks and updating the same PR #6. The native required-check list is explicit; future checks must be registered separately. Conditional release checks may be skipped in ordinary PRs. No merge, review approval, or intentional remote failure probe is authorized. **High-priority activation prerequisite:** authenticated rule inspection is available, but publication and protection updates each still require their concrete authorization and latest-revision verification. Missing enforcement evidence leaves remote acceptance incomplete.

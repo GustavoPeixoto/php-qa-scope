@@ -25,7 +25,7 @@ A dedicated GitHub Actions workflow SHALL validate pull requests to any target b
 
 ### Requirement: Proposed integration validation
 
-Every validation in one QA run SHALL use the same temporary merge commit supplied by GitHub for that PR event. The workflow SHALL NOT substitute the source branch tip when the merge revision is unavailable. Inability to check out or prepare that revision SHALL prevent a successful aggregate check.
+Every validation in one QA run SHALL use the same temporary merge commit supplied by GitHub for that PR event. The workflow SHALL NOT substitute the source branch tip when the merge revision is unavailable. Inability to check out or prepare that revision SHALL prevent a successful validation job.
 
 #### Scenario: Source passes but integration fails
 - **WHEN** a PR introduces a QA failure only after integration with its target branch
@@ -80,7 +80,7 @@ The seven checks SHALL execute as independent jobs or matrix entries with fail-f
 
 ### Requirement: Retained CI evidence
 
-Each validation SHALL retain its native report when produced, available stdout/stderr diagnostics, and an outcome identifying its check and validated revision. Upload SHALL be attempted after success or failure and after catchable cancellation where the runner remains available. A successful check SHALL require native success and a valid report; missing execution evidence or a failed required artifact upload SHALL prevent aggregate success. Available artifacts SHALL remain downloadable for the repository's configured retention period. CI evidence SHALL be separate from local pre-push evidence and SHALL NOT impersonate its container ownership or summary schema.
+Each validation SHALL retain its native report when produced, available stdout/stderr diagnostics, and an outcome identifying its check and validated revision. Upload SHALL be attempted after success or failure and after catchable cancellation where the runner remains available. A successful check SHALL require native success and a valid report; missing execution evidence or a failed required artifact upload SHALL prevent that job from succeeding. Available artifacts SHALL remain downloadable for the repository's configured retention period. CI evidence SHALL be separate from local pre-push evidence and SHALL NOT impersonate its container ownership or summary schema.
 
 #### Scenario: Native findings
 - **WHEN** a tool completes with findings and a valid nonzero report
@@ -94,21 +94,30 @@ Each validation SHALL retain its native report when produced, available stdout/s
 - **WHEN** runner loss prevents evidence publication
 - **THEN** missing evidence SHALL NOT be interpreted as a successful check
 
-### Requirement: Stable required QA result
+### Requirement: Native individual required-check policy
 
-The workflow SHALL emit a stable aggregate job/check named `QA Required`. It SHALL succeed only if all seven expected checks completed successfully and their current-revision evidence is present and valid. Failed, cancelled, skipped, missing, duplicate, unknown, or foreign-revision check outcomes SHALL NOT satisfy the gate. Aggregation SHALL be attempted after upstream failure when GitHub still permits the job to execute.
+The workflow SHALL emit seven stable `QA (<id>)` checks without an aggregate job. Main protection SHALL require each configured check to be present and completed with conclusion `success`, `skipped`, or `neutral` for the applicable revision. Any other state or conclusion SHALL block merge. Required identities SHALL be registered explicitly; future checks SHALL NOT become required automatically.
 
-#### Scenario: All checks pass
-- **WHEN** exactly the seven expected checks succeed with valid evidence for the same merge revision
-- **THEN** `QA Required` SHALL succeed
+#### Scenario: Successful ordinary PR
+- **WHEN** all seven individual QA checks succeed and the required release check is skipped for an ordinary PR
+- **THEN** the required-check policy SHALL be satisfied subject to all other applicable protections
 
-#### Scenario: Incomplete or unsuccessful validation set
-- **WHEN** any expected check fails, is cancelled or skipped, or has no valid current-revision outcome
-- **THEN** `QA Required` SHALL NOT succeed
+#### Scenario: Incomplete required checks
+- **WHEN** any configured required check is missing, pending, or still running
+- **THEN** the policy SHALL block merge
 
-#### Scenario: Evidence set is inconsistent
-- **WHEN** uploaded outcomes include duplicate or unexpected identities, or evidence for another revision
-- **THEN** the aggregate gate SHALL fail
+#### Scenario: Unsuccessful required conclusion
+- **WHEN** a required check fails, is cancelled, times out, or returns a conclusion outside the explicit allowlist
+- **THEN** the policy SHALL block merge
+
+#### Scenario: Native skipped and neutral conclusions
+- **WHEN** a configured required check completes with `skipped` or `neutral`
+- **THEN** that conclusion SHALL satisfy its required-check condition
+- **AND** it SHALL NOT be documented as proof that native validation executed
+
+#### Scenario: New check is introduced
+- **WHEN** another check is added or an existing required check is renamed
+- **THEN** maintainers SHALL update the explicit protection list to require its emitted identity
 
 ### Requirement: Read-only PR execution authority
 
@@ -120,11 +129,13 @@ The QA workflow SHALL use a read-only GitHub token, disable persisted checkout c
 
 ### Requirement: Verified required-check activation
 
-After `QA Required` has been emitted by GitHub Actions under its exact name and integration, repository administrators SHALL add it to the existing `main` ruleset alongside `Validate Release Branch` and any other required checks. Existing up-to-date-branch enforcement, PR requirements, zero required approvals, deletion/force-push protections, empty main bypass list, and release tag protections SHALL be preserved. Other target branches SHALL receive QA execution without new required-check rules from this change. Activation SHALL remain incomplete until dated authenticated remote evidence establishes the updated rule and blocking behavior; local tests SHALL NOT substitute for that evidence.
+After the seven individual QA checks have been emitted under their exact names and integration on the latest PR revision, administrators SHALL add them to the existing `main` ruleset alongside `Validate Release Branch` and all other required checks. Up-to-date enforcement, PR requirements, zero approvals, deletion/force-push protections, empty main bypass and release tag protections SHALL be preserved. Other target branches SHALL receive no new required-check rules. Missing authenticated rule or enforcement evidence SHALL leave activation incomplete.
 
-#### Scenario: Successful ordinary PR
-- **WHEN** an ordinary PR has successful `QA Required`, a skipped emitted `Validate Release Branch`, and satisfies other applicable rules
-- **THEN** the QA and release-check requirements SHALL permit merge without a required human approval
+#### Scenario: Exact required QA identities
+- **WHEN** the main required-check list is updated after the emitted identities have been verified
+- **THEN** it SHALL include `QA (qa-scope)`, `QA (sniffer)`, `QA (fixer)`, `QA (md)`, `QA (stan)`, `QA (test)`, and `QA (openspec)` with the observed GitHub Actions integration
+- **AND** `Validate Release Branch` and every other existing required check SHALL remain required
+- **AND** no aggregate context SHALL be introduced
 
 #### Scenario: Failed QA blocks main merge
 - **WHEN** any expected QA validation fails for a PR targeting `main`

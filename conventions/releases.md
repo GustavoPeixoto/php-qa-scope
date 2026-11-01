@@ -155,19 +155,28 @@ a fallback version.
 `Pull request QA` validates the temporary merge revision for every PR, including
 ordinary, documentation-only, draft, fork, and release PRs, without changing the
 release job's eligibility or its exact `Validate Release Branch` identity.
-Fork runs can require GitHub platform approval. Its separate `QA Required`
-aggregate succeeds only with all seven successful native checks and retained
-current-revision evidence. A skipped ordinary release job remains compatible
-with successful QA; QA failure cannot satisfy the new gate.
+Fork runs can require GitHub platform approval. Each `QA (<id>)` job validates
+its own native report and retains current-revision evidence; failed validation
+or required artifact upload fails that job. Main protection requires the seven
+individual checks rather than an aggregate result.
 
-After integrating the workflow through the existing infrastructure PR process,
-observe the emitted `QA Required` name and GitHub Actions integration. Inspect
-the live `Protect main` ruleset and add that exact check alongside every existing
-required check. Preserve up-to-date enforcement, zero approvals, an empty bypass
+For the latest revision of the existing infrastructure PR, observe the emitted
+names and GitHub Actions integration. The explicit QA names are `QA (qa-scope)`,
+`QA (sniffer)`, `QA (fixer)`, `QA (md)`, `QA (stan)`, `QA (test)`, and
+`QA (openspec)`. Add them to the live `Protect main` ruleset alongside
+`Validate Release Branch` and every other existing required check. Preserve
+up-to-date enforcement, zero approvals, an empty bypass
 list, deletion/force-push protection, and all App/tag protections. Do not extend
 required-check rules to other target branches or modify rules from PR code.
 Git/GitHub mutations require the explicit authorization described in
 [conventions/git.md](git.md); implementation alone does not authorize rollout.
+
+The merge condition requires every configured check to be present and completed
+with `success`, `skipped`, or `neutral`. Any other state or conclusion blocks it,
+including missing, pending, running, failed, cancelled, or timed-out checks.
+An ordinary PR's conditional release check may remain skipped. Skipped/neutral
+results do not prove native execution. Required contexts form an explicit list;
+new or renamed checks must be registered separately.
 
 Record dated authenticated rule rereads and live check/enforcement evidence in
 the change's `verification.md`, separately from local tests. Missing access or

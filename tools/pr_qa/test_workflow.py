@@ -1,4 +1,4 @@
-"""Keep the PR workflow's scheduling, authority, and aggregate contracts explicit."""
+"""Keep PR scheduling, authority, uploads, and individual check identities explicit."""
 
 import ast
 from pathlib import Path
@@ -21,9 +21,9 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotIn(prohibited, SOURCE)
         self.assertNotRegex(SOURCE, r"(?:head\.(?:ref|sha|repo)|\.draft)")
         checkouts = re.findall(r"ref: (.+)", SOURCE)
-        self.assertEqual(["${{ github.sha }}"] * 2, checkouts)
-        self.assertEqual(2, SOURCE.count("persist-credentials: false"))
-        self.assertEqual(2, SOURCE.count("REVISION: ${{ github.sha }}"))
+        self.assertEqual(["${{ github.sha }}"], checkouts)
+        self.assertEqual(1, SOURCE.count("persist-credentials: false"))
+        self.assertEqual(1, SOURCE.count("REVISION: ${{ github.sha }}"))
         self.assertNotIn("refs/pull/", SOURCE)
 
     def test_matrix_independence_and_cancellation(self):
@@ -34,8 +34,11 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("fail-fast: false", SOURCE)
         self.assertIn("group: ${{ github.workflow }}-${{ github.event.pull_request.number }}", SOURCE)
         self.assertIn("cancel-in-progress: true", SOURCE)
-        self.assertEqual(2, SOURCE.count("timeout-minutes: 30"))
-        self.assertEqual(2, SOURCE.count("runs-on: ubuntu-24.04"))
+        self.assertEqual(1, SOURCE.count("timeout-minutes: 30"))
+        self.assertEqual(1, SOURCE.count("runs-on: ubuntu-24.04"))
+        jobs = re.findall(r"^  ([\w-]+):$", SOURCE.split("jobs:\n", 1)[1], re.MULTILINE)
+        self.assertEqual(["checks"], jobs)
+        self.assertIn("name: QA (${{ matrix.check }})", SOURCE)
 
     def test_shared_tooling_locked_dependencies_and_read_only_authority(self):
         self.assertIn("dockerfile=docker/dev/Dockerfile", SOURCE)
@@ -51,24 +54,17 @@ class WorkflowTests(unittest.TestCase):
         for action in re.findall(r"uses: (.+)", SOURCE):
             self.assertRegex(action, r"^actions/[a-z-]+@[a-f0-9]{40}(?: # .*)?$")
 
-    def test_evidence_upload_and_gate_cannot_mask_failure(self):
-        upload = SOURCE.split("- name: Retain available QA evidence", 1)[1].split("  required:", 1)[0]
+    def test_per_check_upload_cannot_mask_failure(self):
+        upload = SOURCE.split("- name: Retain available QA evidence", 1)[1]
         self.assertIn("if: ${{ always() }}", upload)
         self.assertIn("name: qa-${{ matrix.check }}", upload)
         self.assertIn("if-no-files-found: error", upload)
         self.assertIn("logs/pr-qa/results/${{ matrix.check }}/", upload)
         self.assertIn("logs/pr-qa/outcomes/${{ matrix.check }}.json", upload)
         self.assertNotIn("retention-days:", SOURCE)  # Repository-configured retention.
-        gate = SOURCE.split("  required:\n", 1)[1]
-        self.assertIn("name: QA Required\n", gate)
-        self.assertIn("needs: checks", gate)
-        self.assertIn("if: ${{ always() }}", gate)
-        self.assertIn("UPSTREAM_RESULT: ${{ needs.checks.result }}", gate)
-        self.assertIn('--upstream-result "$UPSTREAM_RESULT"', gate)
-        self.assertIn("pattern: qa-*", gate)
-        self.assertIn("path: logs/pr-qa/downloaded", gate)
-        self.assertNotIn("run-id:", gate)
-        self.assertNotIn("merge-multiple: true", gate)
+        self.assertNotIn("success()", upload)
+        for removed in ("QA Required", "download-artifact", "--aggregate", "--upstream-result"):
+            self.assertNotIn(removed, SOURCE)
         self.assertNotIn("continue-on-error", SOURCE)
 
     def test_release_check_keeps_existing_skip_rules(self):

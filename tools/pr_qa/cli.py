@@ -1,4 +1,4 @@
-"""Independent CI execution and defensive aggregation of native QA evidence."""
+"""Independent CI execution using the shared native QA validation contract."""
 
 import argparse
 from contextlib import contextmanager
@@ -17,8 +17,6 @@ from git_hooks import qa, reports
 
 
 STDOUT_REPORTS = {"qa-scope", "fixer", "stan", "openspec"}
-OUTCOME_KEYS = {"kind", "schema_version", "check_id", "revision", "native_exit_code",
-                "report_valid", "status", "error"}
 
 
 class Cancelled(Exception):
@@ -164,70 +162,15 @@ def check(root, check_id, image, revision):
     if outcome["error"]:
         print(outcome["error"], file=sys.stderr)
     return 0 if outcome["status"] == "passed" else 1
-
-
-def aggregate(root, downloaded, revision, upstream):
-    validate_revision(root, revision)
-    downloaded = Path(downloaded)
-    errors = []
-    rows = []
-    expected = {f"qa-{key}/outcomes/{key}.json" for key in reports.CHECKS}
-    found = {str(path.relative_to(downloaded)) for path in downloaded.glob("**/outcomes/*.json")}
-    if found != expected:
-        errors.append(f"Outcome inventory mismatch; missing={sorted(expected - found)}, unexpected={sorted(found - expected)}")
-    if not downloaded.is_dir() or downloaded.is_symlink():
-        errors.append("Missing/invalid artifact directory")
-    artifacts = {p.name for p in downloaded.iterdir()} if downloaded.is_dir() else set()
-    if artifacts != {f"qa-{key}" for key in reports.CHECKS}:
-        errors.append("Artifact identity set mismatch")
-    if upstream != "success":
-        errors.append(f"Upstream matrix result: {upstream}")
-    for key in reports.CHECKS:
-        try:
-            artifact = safe_path(downloaded, f"qa-{key}")
-            path = safe_path(artifact, f"outcomes/{key}.json")
-            outcome = json.loads(path.read_text(encoding="utf-8"))
-            if (not isinstance(outcome, dict) or set(outcome) != OUTCOME_KEYS or
-                    outcome["kind"] != "pr-qa" or type(outcome["schema_version"]) is not int or
-                    outcome["schema_version"] != 1 or outcome["check_id"] != key or
-                    outcome["revision"] != revision or outcome["status"] != "passed" or
-                    type(outcome["native_exit_code"]) is not int or outcome["native_exit_code"] != 0 or
-                    outcome["report_valid"] is not True or outcome["error"] is not None):
-                raise ValueError("Missing successful current-revision native outcome")
-            for stream in ("stdout.log", "stderr.log"):
-                if not safe_path(artifact, f"results/{key}/{stream}").is_file():
-                    raise ValueError("Missing console evidence")
-            validate_report(safe_path(artifact, reports.CHECKS[key][1]), key, root, 0)
-            rows.append(f"| {key} | passed |")
-        except (OSError, ValueError, TypeError, KeyError, ET.ParseError) as exc:
-            rows.append(f"| {key} | failed / missing evidence |")
-            errors.append(f"{key}: {exc}")
-    summary = "QA evidence\n\n| Check | Result |\n| --- | --- |\n" + "\n".join(rows)
-    if errors:
-        summary += "\n\n" + "\n".join(f"- {error}" for error in errors)
-    print(summary)
-    if os.environ.get("GITHUB_STEP_SUMMARY"):
-        with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as handle:
-            handle.write(summary + "\n")
-    return int(bool(errors))
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", choices=reports.CHECKS)
-    mode.add_argument("--aggregate", type=Path)
-    parser.add_argument("--image")
+    parser.add_argument("--check", required=True, choices=reports.CHECKS)
+    parser.add_argument("--image", required=True)
     parser.add_argument("--revision", required=True)
-    parser.add_argument("--upstream-result", default="success", choices=("success", "failure", "cancelled", "skipped"))
     args = parser.parse_args(argv)
-    if args.check and not args.image:
-        parser.error("--check requires --image")
     root = Path.cwd().resolve()
     try:
-        if args.check:
-            return check(root, args.check, args.image, args.revision)
-        return aggregate(root, args.aggregate, args.revision, args.upstream_result)
+        return check(root, args.check, args.image, args.revision)
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f"QA execution failed: {exc}", file=sys.stderr)
         return 1

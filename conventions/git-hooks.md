@@ -225,6 +225,8 @@ Reverting versioned configuration alone does not remove an installed launcher.
 `tools/pr-qa` imports `qa.command`, `reports.CHECKS`, `valid_native`, and
 `valid_openspec` from `tools/git_hooks/`. CI uses the same seven identities,
 complete scopes, native argv/report options, and report acceptance rules. It
+accepts `--check`, `--image`, and `--revision` and emits separately required
+`QA (<id>)` jobs with per-check outcomes; it has no aggregate execution mode. It
 does not invoke the pre-push coordinator, allocate hook runs, install hooks, or
 reuse local lifecycle/ownership evidence. Existing Composer scripts and hook
 runtime policies remain authoritative and unchanged. CI evidence is documented

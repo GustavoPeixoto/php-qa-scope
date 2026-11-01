@@ -5,7 +5,6 @@ import io
 import json
 import os
 from pathlib import Path
-import shutil
 import signal
 import subprocess
 import time
@@ -59,7 +58,7 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(before, subprocess.check_output(snapshot))
         print(f"Native startup/cancellation evidence: {fixture}")
 
-    def test_clean_revision_all_checks_aggregate_and_native_findings(self):
+    def test_clean_revision_all_checks_and_native_findings(self):
         fixture = Path(tempfile.mkdtemp(prefix="pr-qa-native-", dir=ROOT / "tmp"))
         revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         # Export committed blobs without export-ignore, an index, refs, or commits.
@@ -97,16 +96,18 @@ class NativeTests(unittest.TestCase):
                 self.assertEqual(0, subprocess.run(["git", "diff", "--exit-code", "HEAD", "--"], cwd=fixture, env=environment, capture_output=True).returncode)
 
             clean()
-            downloaded = fixture / "logs/pr-qa/downloaded"
             for key in reports.CHECKS:
                 with redirect_stdout(io.StringIO()):
                     result = cli.check(fixture, key, node if key == "openspec" else php, revision)
                 self.assertEqual(0, result, f"{key}: see {fixture}/logs/pr-qa")
-                artifact = downloaded / f"qa-{key}"
-                (artifact / "outcomes").mkdir(parents=True)
-                shutil.copyfile(fixture / f"logs/pr-qa/outcomes/{key}.json", artifact / f"outcomes/{key}.json")
-                shutil.copytree(fixture / f"logs/pr-qa/results/{key}", artifact / f"results/{key}")
-            self.assertEqual(0, cli.aggregate(fixture, downloaded, revision, "success"))
+                outcome = json.loads((fixture / f"logs/pr-qa/outcomes/{key}.json").read_text())
+                self.assertEqual((key, revision, "passed", 0, True, None),
+                                 tuple(outcome[field] for field in
+                                       ("check_id", "revision", "status", "native_exit_code", "report_valid", "error")))
+                report = fixture / "logs/pr-qa" / reports.CHECKS[key][1]
+                cli.validate_report(report, key, fixture, outcome["native_exit_code"])
+                for stream in ("stdout.log", "stderr.log"):
+                    self.assertTrue((fixture / f"logs/pr-qa/results/{key}/{stream}").is_file())
             clean()
             phpcs = fixture / "phpcs.xml"
             original = phpcs.read_bytes()

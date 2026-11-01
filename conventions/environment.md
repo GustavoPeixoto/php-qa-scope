@@ -113,8 +113,9 @@ PR_QA_NATIVE_TESTS=1 PYTHONPATH=tools python3 -B -m unittest pr_qa.test_native -
 
 This opt-in smoke exports committed HEAD blobs into a retained `tmp/` fixture,
 references the original Git metadata read-only, installs locked dependencies,
-runs all seven checks and aggregation, checks native findings and catchable
-cancellation, and verifies tracked content and the lock remain unchanged.
+runs all seven checks, validates their individual reports/outcomes, checks native
+findings and catchable cancellation, and verifies tracked content and the lock
+remain unchanged.
 It neither creates commits/branches nor uses the contributor's index for writes.
 The current working adapter is exercised against the exported package revision;
 GitHub execution against the implementation's merge revision is verified during
