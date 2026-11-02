@@ -24,13 +24,17 @@
 - [x] 3.4 Keep always-attempted per-check uploads, remove the aggregate job/downloads, and test that all seven stable `QA (<id>)` names are emitted while validation and upload failures are not masked.
 - [x] 3.5 Run real-image smoke execution of all seven checks against a disposable clean checkout, verify each successful outcome/report and tested revision independently, preserve native findings/startup/cancellation evidence, and confirm tracked files and lock remain unchanged.
 - [x] 3.6 Test unchanged release-workflow identity/skip behavior and update `conventions/releases.md` with the seven individually required checks, native success/skipped/neutral acceptance, explicit future-check registration, and the existing release/tag authorization model.
+- [x] 3.7 Add SHA-pinned Buildx and optional GitHub cache restore/save steps for separate PHP/Node tooling layers, keyed by format/OS/architecture/family/Dockerfile; preserve shell logs and local image loading, rotate successful local exports, and publish before native validation without masking real preparation failures.
+- [x] 3.8 Cache only Composer downloads for PHP jobs with runtime/manifest/lock keys and same-runtime fallback; mount the writable cache while preserving temporary Composer home, runner ownership, mandatory locked installs, and no cached vendor/credentials/results.
+- [x] 3.9 Verify cold/warm local layer reuse, current-lock installation and invalidation contracts, optional cache failures, and fatal build/install/check/upload behavior; run the PR QA suite, Actionlint, and Zizmor, and document cache scope and limitations in the environment convention and dated verification evidence.
 
 ## 4. Rollout and remote acceptance
 
 - [ ] 4.1 Update the same PR #6 through an additional specifically authorized commit/push/body edit, observe the seven latest-revision check results without an aggregate, and retain the infrastructure integration task as incomplete until actual integration is authorized and completed.
-- [ ] 4.2 Prepare the live main ruleset amendment adding all seven emitted `QA (<id>)` contexts with their observed integration alongside every existing check; apply only after specific authorization, then reread and verify the native acceptance policy, up-to-date enforcement, zero approvals, empty bypass, and unchanged main/tag protections.
+- [x] 4.2 Prepare the live main ruleset amendment adding all seven emitted `QA (<id>)` contexts with their observed integration alongside every existing check; apply only after specific authorization, then reread and verify the native acceptance policy, up-to-date enforcement, zero approvals, empty bypass, and unchanged main/tag protections.
 - [ ] 4.3 Record remote ordinary/documentation/draft/fork/release eligibility and required-check enforcement evidence; distinguish success/skipped/neutral from missing, pending, failed, cancelled, timed-out, or other results, and leave missing proof explicit without intentional remote failure probes or extra PRs.
 - [x] 4.4 Add dated `verification.md` evidence distinguishing local tests, remote rule inspection, live check behavior, and limitations; leave activation tasks incomplete whenever access or enforcement proof is missing, and verify the documented rollback preserves existing protections.
+- [ ] 4.5 After specifically authorized publication to PR #6, observe real cold/warm GitHub cache behavior, restored layers/downloads, timings, and all seven latest-revision checks without artificial commits or failure probes; keep missing observations explicitly pending.
 
 ## 5. Final consistency
 

@@ -65,6 +65,36 @@ Development and PR QA SHALL obtain PHP and Composer from the existing PHP Docker
 - **THEN** it SHALL retain its configured user, workspace behavior, Lefthook, assistant tooling, bootstrap scripts, and OpenSpec workflow configuration
 - **AND** the final default image SHALL remain the development environment
 
+### Requirement: Optional persistent preparation caches
+
+The workflow SHALL persist Docker tooling layers and PHP Composer package downloads in GitHub Actions caches without adding a preparation job or coupling validations. Docker cache keys SHALL distinguish format version, runner OS/architecture, tooling family, and the corresponding Dockerfile hash. Composer cache keys SHALL distinguish format version, runner OS/architecture, PHP Dockerfile, and Composer manifest/lock hashes, with fallback to earlier downloads for the same runtime. Every PHP check SHALL still install its locked development dependencies and run its native validation. The workflow SHALL NOT cache installed dependency trees, credentials, reports, or outcomes.
+
+#### Scenario: No reusable cache exists
+- **WHEN** a cache is missing, expired, or cannot be restored
+- **THEN** each check SHALL build its tooling and install applicable dependencies normally
+- **AND** cache restore or publication failures alone SHALL NOT fail QA or suppress its native validation
+
+#### Scenario: Cache reuse across checks and commits
+- **WHEN** a completed earlier job published a cache visible to a later check or PR execution with compatible inputs
+- **THEN** that check SHALL be able to restore the corresponding layers or downloads
+- **AND** an ordinary package-source change SHALL NOT change the Docker cache key
+- **AND** each check SHALL retain independent build, install, report validation, and upload results
+
+#### Scenario: Composer inputs change
+- **WHEN** the Composer manifest or lock changes
+- **THEN** the primary Composer cache key SHALL change
+- **AND** previously downloaded packages MAY be reused while installation still follows the current lock and platform requirements
+
+#### Scenario: Successful preparation is cached before validation
+- **WHEN** a build or locked install succeeds after a cache miss
+- **THEN** its prepared cache SHALL be offered for publication before native validation
+- **AND** simultaneous publishers SHALL use GitHub's first-publication behavior without failing their QA jobs
+- **AND** layer export SHALL replace the old exported directory only after successful construction
+
+#### Scenario: Preparation or validation really fails
+- **WHEN** tooling construction, locked installation, native validation, or required report upload fails
+- **THEN** the job SHALL fail regardless of cache hits or successful cache publication
+
 ### Requirement: Independent validation execution
 
 The seven checks SHALL execute as independent jobs or matrix entries with fail-fast disabled. One check's failure SHALL NOT suppress the remaining validations. A superseding event for the same PR MAY cancel an obsolete run, but cancellation SHALL NOT produce successful required QA. CI SHALL execute the validation contract without invoking the dev-only pre-push coordinator or requiring installation of contributor hooks.

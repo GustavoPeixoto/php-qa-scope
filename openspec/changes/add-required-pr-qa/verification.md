@@ -325,3 +325,119 @@ or blocking evidence remains explicit and task 4.3 stays incomplete. Source for
 the platform conclusion policy is GitHub's required-status-check troubleshooting
 documentation; the full allowlist is stated in this change's own spec and does
 not depend on that external page to be understood.
+
+## Required-check activation — 2026-11-01
+
+The user specifically authorized applying the prepared `Protect main` amendment,
+without review approval or merge. Authenticated confirmation completed at
+2026-11-02T00:47:22Z (2026-11-01 21:47:22 America/Sao_Paulo).
+
+Before applying, the live mutable configuration still matched the reviewed
+baseline. All seven checks for PR #6 head
+`632b549eb23e0c8c63532f9fd015b6419aeef45b` were present, completed successfully,
+and attributed to GitHub Actions integration 15368. The authorized PUT to
+`repos/GustavoPeixoto/php-qa-scope/rulesets/25322253` succeeded. Its required
+contexts are now:
+
+- `Validate Release Branch`
+- `QA (qa-scope)`
+- `QA (sniffer)`
+- `QA (fixer)`
+- `QA (md)`
+- `QA (stan)`
+- `QA (test)`
+- `QA (openspec)`
+
+All eight are bound to integration 15368. An independent authenticated GET after
+the update exactly matched the authorized mutable payload. Active enforcement,
+the main-only target, strict up-to-date policy, zero required approvals, empty
+bypass, deletion/force-push blocks, and every other existing parameter were
+preserved. A separate before/after read of `Protect releases` (25208186) matched
+exactly; no tag rule was targeted. The resulting snapshots are retained as
+`ruleset-after.json`, `tags-before-activation.json` and
+`tags-after-activation.json` under `tmp/pr-qa-individual-PQJI0U6b/`, alongside
+the already recorded baseline/proposal.
+
+PR #6 remained open and unmerged at the same head, with `auto_merge: null`.
+GitHub reported `mergeable: true` and `mergeable_state: clean`, consistent with
+the seven successful QA checks, skipped ordinary release check, and updated
+required list. This is live evidence for successful ordinary-PR eligibility;
+it is not a failed-check enforcement probe or a merge attempt.
+
+Task 4.2 is complete. Progress is 20/22: task 4.1 still requires actual
+integration, which has not been authorized, and task 4.3 remains open for missing
+blocking/eligibility evidence. No intentional remote failure probe or additional
+PR was created. No PR approval, merge, Git staging, commit, push, stash change,
+release or tag operation was performed as part of this activation. These local
+evidence/tracking edits have not been staged or committed.
+
+## Optional preparation caches — 2026-11-02 (UTC)
+
+The accepted cache revision adds separate GitHub Actions caches for PHP tooling
+layers, Node/OpenSpec tooling layers, and PHP Composer package downloads. It
+preserves the seven independent checks, merge-revision checkout, native adapter,
+mandatory locked install, required report uploads, and existing main protection.
+The earlier decision to start without caches is superseded, not erased from the
+historical execution evidence above.
+
+Official action refs were resolved through authenticated read-only GitHub API
+queries: `docker/setup-buildx-action` v3 is pinned to
+`8d2750c68a42422c14e847fe6c8ac0403b4cbd6f`; both `actions/cache` v4 subactions
+are pinned to `0057852bfaa89a56745cba8c7296529d2fc39830`. BuildKit exports to
+a fresh local directory in max mode, loads `pr-qa-tooling`, and replaces its old
+export only after success. Only cache restore/save steps tolerate errors.
+Composer caches downloads, never installed dependencies or credentials.
+
+### Current local verification
+
+- PR QA discovery: **20 tests, 16 passed, four opt-in runtime/native skips**.
+  The new cases execute the actual workflow shell with controlled Docker exits:
+  cold build, warm import/export rotation, fatal build failure with preserved old
+  cache/log, and successful/failed Composer install with the cache mount and
+  temporary Composer home. Contract checks cover family/runtime/input key
+  boundaries, current manifest/lock inclusion, publication before QA, all seven
+  identities, and tolerance limited to the four cache operations.
+- Actionlint **1.7.12** passed for the revised workflow. Its first run caught
+  `runner.temp` being unavailable in job-level env; cache-root initialization was
+  moved after checkout through `GITHUB_ENV`, then revalidated successfully.
+- Zizmor **1.31.1**, offline mode: no findings for the revised workflow.
+- Strict selected-change and all-project OpenSpec validation passed: **6/6 items
+  valid** (one active change and five specs). Diff whitespace validation passed.
+- Real PHP tooling cold build/export: **21.675 s**, exit zero, no cached steps.
+  A second build took **1.612 s** and reported two cached steps. An additional
+  build using a **fresh isolated BuildKit daemon** successfully imported the
+  exported directory, reported two cached steps, and took **7.028 s**. The fresh
+  daemon confirms external exported layers work independently of the first
+  builder's internal state. Each build retained its log and loaded the image.
+- Two clean Composer fixtures used the repository's current manifest and lock.
+  The first installed all locked development dependencies in **7.078 s** and
+  cached **72 package archives**. A separate empty-vendor fixture installed in
+  **2.278 s with Docker networking disabled**, using those downloads. Both
+  generated `vendor/autoload.php` and preserved the lock's SHA-256 exactly.
+- Native smoke evidence is retained under `tmp/pr-qa-cache-validation/`, including
+  summary, build/export/import logs, separate fixture installs, and download
+  cache. The statements above record the result independently of those ignored
+  paths. The two dedicated BuildKit builders are removed after verification;
+  shared services, images, caches, index, and stash are not pruned or rewritten.
+
+These local timings are observations, not a GitHub performance claim: runner,
+registry, transfer, and cache-service costs differ. Manifest/lock key invalidation
+and warning-only service steps are verified as workflow contracts; actual GitHub
+cache restore/save, visibility, eviction, concurrent publication, and observed
+cold/warm runtime remain **unverified pending authorized publication**. No package
+source, dependency version, Dockerfile, release workflow, or shared hook runtime
+changed, so their older native acceptance evidence remains historical rather than
+being presented as a new run.
+
+Task 4.5 remains open for real GitHub cache evidence, alongside the existing
+integration task 4.1 and missing enforcement/eligibility evidence in task 4.3.
+No additional PR, artificial warm-up commit, intentional remote failure, review
+approval, merge, ruleset update, staging, commit, push, or stash operation is part
+of this local implementation. The existing staged activation evidence is
+preserved; this revision is added only to the working tree until authorized.
+
+An authenticated read-only inspection confirmed that `Protect main` still requires
+the same eight contexts under GitHub Actions integration 15368 with strict
+up-to-date enforcement. PR #6 is still open at `632b549`, unmerged, with auto-merge
+disabled. No live rules were changed by this revision. Current progress is
+**23/26 tasks complete**; tasks 4.1, 4.3, and 4.5 remain open.

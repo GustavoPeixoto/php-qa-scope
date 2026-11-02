@@ -24,7 +24,7 @@ Add `.github/workflows/qa.yml`, named `Pull request QA`, using `pull_request` ty
 
 Use `ubuntu-24.04`, workflow permissions `contents: read`, SHA-pinned actions consistent with the release workflows, and checkout with `persist-credentials: false`. Check out `github.sha`, the event's temporary merge commit, rather than a moving merge ref or the PR head. Use the same revision for every matrix entry. Never fall back to the source SHA. A PR without an available merge revision cannot obtain successful required QA.
 
-Use one seven-entry matrix with IDs `qa-scope`, `sniffer`, `fixer`, `md`, `stan`, `test`, and `openspec`, and `fail-fast: false`. Contract tests compare its membership with the shared check registry. Each matrix entry builds only its required tooling image and runs one native check, emitting the stable name `QA (<id>)`. These seven names are required individually through GitHub's native main protection. There is no aggregate job. No `continue-on-error` may mask a validation or required upload failure.
+Use one seven-entry matrix with IDs `qa-scope`, `sniffer`, `fixer`, `md`, `stan`, `test`, and `openspec`, and `fail-fast: false`. Contract tests compare its membership with the shared check registry. Each matrix entry builds only its required tooling image and runs one native check, emitting the stable name `QA (<id>)`. These seven names are required individually through GitHub's native main protection. There is no aggregate job. Only optional cache restore/save steps may use `continue-on-error`; build, install, validation, and required upload failures must remain fatal.
 
 The explicit merge rule is: all required checks must be present and completed with conclusion `success`, `skipped`, or `neutral`. Missing, pending, running, failed, cancelled, timed-out, or any other result blocks merge. `Validate Release Branch` stays required and conditional, so an ordinary PR's skipped release check is accepted. The required list is not a wildcard: future checks must also be registered. Per-check validation still requires native zero and valid evidence to emit success; skipped/neutral acceptance is a deliberate platform-policy choice rather than proof of native execution.
 
@@ -54,9 +54,19 @@ OpenSpec matrix entries build `docker/dev/Dockerfile --target tooling` and run t
 
 PHP entries build `docker/php/Dockerfile --target tooling` from the same merge checkout. Before validation, install dependencies with the image's Composer using `install --no-interaction --no-ansi --prefer-dist --no-progress`, including development dependencies. Preserve the approved Composer plugin configuration; do not use `update`, ignore platform requirements, or add tool-version pins to YAML. Make distribution extraction available in this shared stage by moving the existing `unzip` installation from PHP development utilities to PHP tooling; retain PHP/Composer versions and Xdebug isolation. This is needed because release validation previously only read manifests, while QA must install packages.
 
-Each PHP matrix job installs its own dependency tree in its isolated checkout. Start without cross-job dependency artifacts, image publishing, or caches: this has more setup cost but makes fork permissions, installed platform requirements, and the exact lock authoritative. Optimization can follow measured runtime costs.
+Each PHP matrix job installs its own dependency tree in its isolated checkout. Do not publish images, transfer dependency trees between jobs, or introduce a preparation job. The accepted cache revision below supersedes the original decision to start without caches; the exact lock and platform checks remain authoritative.
 
 The existing mutable Node and PHP image references remain unchanged. This centralizes version declarations; pinning digests or upgrading versions is outside scope.
+
+### 3.1. Optional persistent tooling and Composer caches
+
+Use SHA-pinned official `docker/setup-buildx-action` and `actions/cache/restore`/`save`. BuildKit uses its local importer/exporter; the cache actions persist only the exported layer directory in GitHub's repository cache service. Keep the existing shell build log, build `tooling` with plain progress, and load the result into the runner Docker daemon as `pr-qa-tooling`. No image registry, credentials inside builds, or new job dependency is needed.
+
+Docker cache keys contain a format version, runner OS/architecture, the `php` or `node` family, and that family's Dockerfile hash. The tooling targets consume no checkout files other than their Dockerfile, so ordinary package-source changes do not invalidate these keys. Restore into a runner-temporary directory; import only when its index exists. Export in `mode=max` to a fresh sibling directory, replacing the restored directory only after a successful build. This avoids accumulating obsolete exported blobs. The mutable upstream-reference limitation remains unchanged.
+
+For PHP jobs only, cache Composer downloads under a separate runner-temporary directory. Key by format version, runner OS/architecture, PHP Dockerfile hash, and both Composer manifest/lock hashes; fall back to earlier entries for the same PHP runtime. Bind-mount that directory and set `COMPOSER_CACHE_DIR`, while retaining the temporary `COMPOSER_HOME`, runner UID/GID, and unchanged mandatory locked install. Never cache `vendor/`, credentials, reports, or outcomes. Reusing earlier downloads cannot replace installation or lock/platform validation.
+
+Restore/save failures are warning-only steps. Missing or expired entries build/download normally. Save each newly prepared cache before native validation, and skip saving an exact immutable-key hit. Parallel jobs may all miss initially and do duplicate work; first publication of a key wins, and an existing cache is not a live shared volume. GitHub's native branch/PR cache visibility and eviction apply. Cached content contains no secrets and is not trusted as evidence of successful QA. Record real cold/warm restoration, layer reuse, and timings only after authorized publication; no artificial commits, failure probes, or claims of measured speedup.
 
 ### 4. Retain and validate evidence per check
 
@@ -76,7 +86,7 @@ Document shared tooling in `conventions/environment.md`, validation parity in `c
 
 ## Risks / Trade-offs
 
-- Repeated builds/downloads and registry outages can increase latency or fail preparation; isolate failures per job, retain diagnostics, and measure before adding caches.
+- Cold-cache builds/downloads and registry outages can increase latency or fail preparation. Optional caches may incur transfer/storage costs or be evicted; preserve independent preparation and diagnostics, and measure actual cold/warm runs before claiming a speedup.
 - Tooling images must support locked dependencies and native report formats; smoke-test actual installs and all seven commands rather than inferring readiness from Dockerfile structure.
 - Changes to shared helpers could regress hook acceptance; run the existing Python hook tests and focused real-image parity tests.
 - Container root paths and permissions can invalidate otherwise correct reports; use matching absolute mounts and runner-owned writable output directories.

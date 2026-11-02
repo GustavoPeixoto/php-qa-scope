@@ -121,6 +121,39 @@ The current working adapter is exercised against the exported package revision;
 GitHub execution against the implementation's merge revision is verified during
 rollout. Evidence is retained in the reported temporary fixture paths.
 
+### Pull Request Preparation Caches
+
+PR QA keeps its seven matrix entries independent. SHA-pinned official Buildx and
+GitHub cache restore/save actions persist optional preparation caches in GitHub
+Actions, using the platform's native branch/PR visibility and eviction policy.
+Each runner restores its own copy; parallel checks do not share a live directory.
+A first cold run may repeat the same setup in several jobs.
+
+Docker uses BuildKit's local layer importer/exporter, with separate PHP and
+Node/OpenSpec cache keys containing a format version, runner OS/architecture,
+tooling family, and Dockerfile hash. Package-source edits do not invalidate these
+keys. Each job still builds the tooling target and loads `pr-qa-tooling` into its
+local Docker daemon. It exports layers into a fresh temporary directory and
+replaces the previous export only after successful construction, retaining its
+shell build log. No image is published to a registry. Mutable upstream references
+retain their existing reproducibility limitation.
+
+Only PHP entries restore Composer package downloads. Their keys include a format
+version, runner OS/architecture, PHP Dockerfile hash, and both Composer manifest
+and lock hashes, with fallback to earlier downloads for the same runtime. A
+writable bind mount supplies `COMPOSER_CACHE_DIR`; `COMPOSER_HOME` remains
+temporary. Every PHP job still runs its complete locked development install with
+the current platform checks. Installed `vendor/`, credentials, reports, and QA
+outcomes are never cached.
+
+Restore/save failures are warning-only. Missing or expired caches follow the
+normal build/download path; actual build, install, check, and required report
+upload failures remain fatal. Successfully prepared caches are offered for
+publication before native QA, skipping exact immutable-key hits. Concurrent
+publishers use first-publication behavior. Record observed GitHub cold/warm
+restoration and timings separately from local layer/download verification; local
+success alone does not prove GitHub cache reuse or a speedup.
+
 ## Environment Topology
 
 The environment topology is intentionally small:
