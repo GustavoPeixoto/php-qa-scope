@@ -1,10 +1,10 @@
-# Spec Delta
+# repository-pr-qa Specification
 
 ## Purpose
 
 Provide full-scope QA for every proposed GitHub integration, with shared local/CI validation behavior and an enforced merge gate on `main`.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Universal pull request QA
 
@@ -110,7 +110,7 @@ The seven checks SHALL execute as independent jobs or matrix entries with fail-f
 
 ### Requirement: Retained CI evidence
 
-Each validation SHALL retain its native report when produced, available stdout/stderr diagnostics, and an outcome identifying its check and validated revision. Upload SHALL be attempted after success or failure and after catchable cancellation where the runner remains available. A successful check SHALL require native success and a valid report; missing execution evidence or a failed required artifact upload SHALL prevent that job from succeeding. Available artifacts SHALL remain downloadable for the repository's configured retention period. CI evidence SHALL be separate from local pre-push evidence and SHALL NOT impersonate its container ownership or summary schema.
+Each validation SHALL retain its native report when produced, available stdout/stderr diagnostics, and an outcome identifying its check and validated revision. Upload SHALL be attempted after success or failure and after catchable cancellation where the runner remains available. A successful check SHALL require native success and a valid report; missing execution evidence or a failed required artifact upload SHALL prevent that job from succeeding. Available artifacts from the current workflow attempt SHALL remain downloadable for the repository's configured retention period. A later rerun MAY make earlier-attempt artifacts unavailable before their recorded expiration; preservation across attempts SHALL NOT be required. Each rerun SHALL attempt to upload its own available evidence and SHALL NOT use earlier-attempt evidence to certify current native execution. CI evidence SHALL be separate from local pre-push evidence and SHALL NOT impersonate its container ownership or summary schema.
 
 #### Scenario: Native findings
 - **WHEN** a tool completes with findings and a valid nonzero report
@@ -119,6 +119,12 @@ Each validation SHALL retain its native report when produced, available stdout/s
 #### Scenario: Tool never starts
 - **WHEN** preparation or native startup fails before a report exists
 - **THEN** available diagnostics SHALL be retained without manufacturing a successful native outcome
+
+#### Scenario: Workflow reexecution
+- **WHEN** the workflow is rerun and earlier-attempt artifacts become unavailable
+- **THEN** that loss SHALL be accepted without requiring archival of every attempt
+- **AND** the current attempt SHALL publish its own available reports, diagnostics, and outcomes under the same upload and check-success requirements
+- **AND** its available artifacts SHALL be subject to the configured retention period
 
 #### Scenario: Runner becomes unavailable
 - **WHEN** runner loss prevents evidence publication
@@ -159,7 +165,7 @@ The QA workflow SHALL use a read-only GitHub token, disable persisted checkout c
 
 ### Requirement: Verified required-check activation
 
-After the seven individual QA checks have been emitted under their exact names and integration on the latest PR revision, administrators SHALL add them to the existing `main` ruleset alongside `Validate Release Branch` and all other required checks. Up-to-date enforcement, PR requirements, zero approvals, deletion/force-push protections, empty main bypass and release tag protections SHALL be preserved. Other target branches SHALL receive no new required-check rules. Missing authenticated rule or enforcement evidence SHALL leave activation incomplete.
+After the seven individual QA checks have been emitted under their exact names and integration on the latest PR revision, administrators SHALL add them to the existing `main` ruleset alongside `Validate Release Branch` and all other required checks. Up-to-date enforcement, PR requirements, zero approvals, deletion/force-push protections, empty main bypass and release tag protections SHALL be preserved. Other target branches SHALL receive no new required-check rules. Acceptance MAY combine authenticated original configuration with reproducible enforcement tests against an equivalent isolated laboratory policy when the developer explicitly accepts and records the absence of direct original-main enforcement, real-fork, and emitted-neutral evidence. Missing authenticated original rule evidence or missing required laboratory evidence SHALL leave this revised acceptance incomplete.
 
 #### Scenario: Exact required QA identities
 - **WHEN** the main required-check list is updated after the emitted identities have been verified
@@ -170,6 +176,13 @@ After the seven individual QA checks have been emitted under their exact names a
 #### Scenario: Failed QA blocks main merge
 - **WHEN** any expected QA validation fails for a PR targeting `main`
 - **THEN** the configured required QA check SHALL prevent merge
+
+#### Scenario: Accepted isolated enforcement evidence
+- **WHEN** the developer accepts a separately authorized independent laboratory with an authenticated equivalent main ruleset
+- **THEN** documentation-only, draft, ordinary, release, failure/recovery, missing-check, pending/running, cancellation, and timeout observations SHALL be recorded against actual laboratory revisions
+- **AND** real-fork, emitted-neutral, and direct original-main blocking SHALL remain explicitly unverified rather than being inferred from copied protection
+- **AND** no test refs, commits, PRs, checks, or caches SHALL be written to the original repository
+- **AND** task completion SHALL require exported evidence before authorized laboratory deletion
 
 #### Scenario: Remote access is unavailable
 - **WHEN** repository rule inspection, modification, or enforcement verification cannot be authenticated
