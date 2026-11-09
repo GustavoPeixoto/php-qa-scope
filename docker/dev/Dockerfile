@@ -19,6 +19,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         fd-find \
+        gh \
         git \
         jq \
         less \
@@ -38,6 +39,11 @@ RUN apt-get update \
 # Rename the node user, which is the image default.
 RUN usermod --login ${USERNAME} --move-home --home /home/${USERNAME} node \
     && groupmod --new-name ${USERNAME} node
+
+ENV GH_CONFIG_DIR=/home/${USERNAME}/.config/gh
+
+RUN install -d -o ${USERNAME} -g ${USERNAME} /home/${USERNAME}/.config \
+    && install -d -m 0700 -o ${USERNAME} -g ${USERNAME} ${GH_CONFIG_DIR}
 
 # Allow the user to run sudo without a password.
 RUN mkdir -p /etc/sudoers.d \
@@ -68,6 +74,8 @@ RUN chmod +x \
     /usr/local/bin/start-headroom-proxy
 
 USER ${USERNAME}
+
+RUN install -d /home/${USERNAME}/.codex
 
 RUN openspec config set profile custom \
     && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'

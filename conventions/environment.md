@@ -20,6 +20,69 @@ AI-assisted development should happen from the `dev` service by default. The age
 
 Do not use the PHP-focused environment as the main context for AI-assisted development, except for an explicit and narrow task that only needs package-local tooling.
 
+### GitHub CLI And Persistent Tool State
+
+The development stage installs the distribution's `gh` package through its
+existing APT transaction. GitHub CLI is available to `dev` in a newly built
+development image; it is not installed by the shared Node/OpenSpec tooling stage.
+The exact package version follows the configured distribution repositories.
+
+`GH_CONFIG_DIR` points to `/home/dev/.config/gh` for the default dev user.
+Compose mounts the project-scoped `github-cli` named volume there, normally
+`${PROJECT_NAME}_github-cli`. Compose also mounts `codex` at `/home/dev/.codex`,
+normally using `${PROJECT_NAME}_codex`. The Dev Container inherits both mounts
+from the dev service; do not duplicate them in its configuration. PHP receives
+neither state volume.
+
+The Codex declaration reuses the existing project-scoped volume. For this
+project, the existing active mount and the resolved Compose name are both
+`php-qa-scope_codex`. Keep that project/volume identity when recreating the
+container; changing the project name selects a different volume. Moving the
+declaration does not copy or replace existing state. Codex binary availability
+still follows the existing VS Code extension setup.
+
+Image setup creates both directories with dev ownership so new volumes are
+writable without root. The GitHub CLI directory is created with mode `0700`;
+its retained volume preserves that mode. Dev Container post-create initialization
+repairs ownership of both directories while preserving existing files, their
+modes, and the Codex setup commands. It does not repeat chmod.
+
+Rebuild/recreate the active dev environment only in a coordinated, separately
+authorized step. After recreation, run browser authentication only with the
+required account-operation authorization:
+
+```sh
+gh auth login --hostname github.com --web --git-protocol ssh
+gh auth status --hostname github.com
+gh api user --jq .login
+```
+
+When prompted about generating or uploading an SSH key, decline generation and
+select `Skip` for upload; do not provision keys as part of this login. The
+distribution CLI does not provide the newer `--skip-ssh-key` option. This keeps
+the repository's SSH transport without running `gh auth setup-git`.
+Initial login remains interactive and is never part of image construction or
+container startup. Check the account and
+stored configuration location without printing the token or the contents of
+`hosts.yml`. In this development image, credentials are stored as local files
+in the private configuration volume; the volume is not an encryption service.
+Do not put credentials in Dockerfiles, build arguments, versioned files, local
+environment files, reports, or logs.
+
+Retaining the volume preserves login state across container recreation and
+image rebuilds while the credential remains valid. Expiration, revocation,
+explicit logout, or deleting the volume can require a new login. Do not delete
+credential volumes automatically or use `docker compose down --volumes` as a
+routine rebuild operation. Rollback can remove the package/mount declaration
+while leaving the existing volume for its owner.
+
+The opt-in runtime suite exercises separate disposable GitHub CLI and Codex
+volumes across two containers, with network disabled and synthetic account data.
+It verifies ownership/non-root writing for both directories, private GH modes,
+CLI configuration readback, and unchanged account-file digests for both tools,
+then removes only its own test resources. It never mounts real state into a
+probe. This proves persistence mechanics, not successful account authentication.
+
 ## The `php` Service
 
 The `php` service is the focused workspace for Composer package tooling at the repository root.

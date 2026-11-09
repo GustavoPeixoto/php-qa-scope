@@ -16,6 +16,12 @@ services:
         target: ${WORKSPACE_DIR}
         consistency: consistent
       - /var/run/docker.sock:/var/run/docker.sock
+      - type: volume
+        source: codex
+        target: /home/dev/.codex
+      - type: volume
+        source: github-cli
+        target: /home/dev/.config/gh
     working_dir: ${WORKSPACE_DIR}
     # Codex uses bubblewrap for sandboxing; Docker's default seccomp blocks unshare/namespaces in the Dev Container.
     security_opt:
@@ -37,3 +43,7 @@ services:
         target: ${WORKSPACE_DIR}
         consistency: cached
     working_dir: ${WORKSPACE_DIR}
+
+volumes:
+  codex: {}
+  github-cli: {}
