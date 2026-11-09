@@ -2,7 +2,13 @@ FROM ghcr.io/php/pie:1.4.10-bin AS pie
 
 FROM php:8.5.10-alpine AS base
 
-FROM base AS development
+FROM base AS tooling
+
+COPY --from=composer:2.10.3 /usr/bin/composer /usr/local/bin/composer
+
+RUN apk add --no-cache unzip
+
+FROM tooling AS development
 
 RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 COPY docker/php/php.ini $PHP_INI_DIR/conf.d/90-project.ini
@@ -16,7 +22,7 @@ ARG WORKSPACE_DIR
 RUN : "${WORKSPACE_DIR:?WORKSPACE_DIR build arg is required}"
 ENV WORKSPACE_DIR=${WORKSPACE_DIR}
 
-RUN apk add --no-cache bash git unzip
+RUN apk add --no-cache bash git
 
 # PIE is mounted only for this RUN; it also enables the installed extension.
 # Build dependencies are available only during installation.
@@ -26,8 +32,6 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/local/bin/pie \
         --no-system-dependencies-check xdebug/xdebug:3.5.3 \
     && rm -rf /root/.pie \
     && apk del .xdebug-build-deps
-
-COPY --from=composer:2.10.3 /usr/bin/composer /usr/local/bin/composer
 
     # Create the user.
 RUN addgroup -g ${USER_GID} ${USERNAME} \

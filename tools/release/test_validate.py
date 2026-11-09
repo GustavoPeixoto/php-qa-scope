@@ -1,10 +1,11 @@
-"""Shared fixtures for the helper and workflow-owned publisher."""
+"""Expected-result fixtures for shared release rules and tag enumeration."""
 
 import json
 from pathlib import Path
 import unittest
 
-from release.validate import ReleaseError, remote_tags, validate
+from release.contract import ReleaseError, validate
+from release.github_api import remote_tags
 
 
 FIXTURES = json.loads(Path(__file__).with_name("fixtures.json").read_text())

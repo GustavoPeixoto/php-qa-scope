@@ -24,6 +24,7 @@
         "eamodio.gitlens",
         "EditorConfig.EditorConfig",
         "george-alisson.html-preview-vscode",
+        "GitHub.vscode-github-actions",
         "Gruntfuggly.todo-tree",
         "inferrinizzard.prettier-sql-vscode",
         "mechatroner.rainbow-csv",
@@ -90,10 +91,7 @@
     }
   },
   "remoteUser": "dev",
-  "mounts": [
-    "source=codex,target=/home/dev/.codex,type=volume"
-  ],
-  "postCreateCommand": "sudo chown -R dev:dev /home/dev/.codex && setup-codex-context-mode && setup-codex-headroom && setup-git-hooks",
+  "postCreateCommand": "sudo chown -R dev:dev /home/dev/.codex /home/dev/.config/gh && setup-codex-context-mode && setup-codex-headroom && setup-git-hooks",
   "postStartCommand": "start-headroom-proxy",
   "waitFor": "postStartCommand"
 }

@@ -43,19 +43,44 @@ API failures never mean empty history. Finish one release before merging another
 
 ## Validation and publication
 
-The exact required job/check name is `Validate Release Branch`. It runs on every
-PR to `main` when opened, reopened, synchronized, or marked ready. Ordinary PRs,
-including forks, pass release-specific checks. Any `release/` prefix opts into
-validation; malformed names and release-named forks fail.
+The exact required job/check name is `Validate Release Branch`. The workflow is
+triggered for PRs to `main` when opened, reopened, synchronized, or marked ready,
+without path filters. One job-level `release/` prefix condition skips the entire
+job for ordinary PRs, including forks, before allocating a runner or building an
+image. A skipped job is acceptable for the required check; a workflow excluded by
+event/path filters can leave that check absent or pending. Any `release/` prefix
+opts into validation, including malformed names and release-named forks. The origin
+step rejects release forks before checkout/build; remaining validation steps use
+normal success/failure sequencing without repeated prefix conditions.
 
-Both release PR content and the exact integrated commit use Composer 2.10.3:
+Both release PR content and the exact integrated commit build the `tooling` target
+of their checked-out `docker/php/Dockerfile` and run Composer in that image. PHP and
+Composer version declarations are shared with the local `development` target,
+which retains Xdebug and local user/workspace setup. CI does not use setup-php or
+independent runtime pins, local `.env` files or a running Compose service. Python
+and `gh` remain on the runner. Builds and Composer containers receive no API/App
+credentials; failures fail the validation job and prevent dependent publication.
+
+The strict command inside the container remains:
 
 ```sh
 composer --no-plugins --no-scripts validate --strict --no-check-version
 ```
 
 For the running PHP service, prefix that command with `docker compose exec -T php`.
-The option suppresses only the advisory against explicitly declaring `version`.
+For the CI target on a host with this checkout available at `$PWD`, use:
+
+```sh
+docker build --file docker/php/Dockerfile --target tooling --tag php-qa-scope-release-tooling .
+docker run --rm --mount "type=bind,source=$PWD,target=/workspace,readonly" --workdir /workspace php-qa-scope-release-tooling composer --no-plugins --no-scripts validate --strict --no-check-version
+```
+
+Inside `dev`, use the host checkout path as the bind-mount source when Docker runs
+on the host. See [environment.md](environment.md) for target builds and test mount
+configuration. Builds can reuse parent layers, but shared version declarations do
+not guarantee byte-for-byte reproducibility of mutable upstream tags/packages.
+
+`--no-check-version` suppresses only the advisory against explicitly declaring `version`.
 Schema, publishability, other strict warnings, and existing lock consistency still
 fail. Do not install dependencies, run scripts, enable plugins, suppress all
 warnings, or disable lock/publishability checks. If lock metadata is stale, use
@@ -64,14 +89,59 @@ environment, review the diff, and confirm no dependency versions changed before
 rerunning validation. Do not run this recovery command unless a stale lock needs
 repair; it may contact configured repositories.
 
+All three checkout steps across the two release workflows are named
+`Checkout repository`. PR validation selects the exact proposed head, integrated
+validation selects `merge_commit_sha`, and publication selects `github.workflow_sha`.
+The common step label does not change job/check names or revision selection.
+
 After an eligible merge, `Validate Merged Release` checks out `merge_commit_sha`
 without persisted credentials and repeats validation. Squash and rebase releases
-also use that integrated SHA. The dependent publisher has no checkout and imports
-no repository code. It independently reads the PR, immutable manifest, and fresh
-remote tag pages with a read-only token. Only after those checks pass does it
-request a repository-scoped `release-bot` token with `Contents: write`, using
-`RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY`. Only create-ref receives
-that token. It creates a lightweight `refs/tags/vX.Y.Z` at the verified SHA.
+also use that integrated SHA.
+
+The dependent publisher uses a standard full checkout in the default job
+workspace, from this repository at the exact `github.workflow_sha` containing the
+executing workflow. Persisted credentials are disabled, and no optional checkout
+`path`, `sparse-checkout` or `sparse-checkout-cone-mode` inputs are set. Its command
+remains `python3 -I -B tools/release/authority.py`, executed from the workspace root.
+All three jobs now use normal full checkouts while retaining their own revision
+selectors. Package files being present does not cause them to execute: publication
+runs only the selected release automation and reads the manifest and tag target
+at the separately verified integrated SHA. Missing automation fails before token
+creation without fallback to another revision, package checkout or inline code.
+
+Release automation is divided into four modules:
+
+- `contract.py`: pure eligibility, canonical version, manifest agreement, baseline,
+  duplicate-target and exact-successor rules;
+- `github_api.py`: read-only GitHub API access and complete remote tag enumeration;
+- `validate.py`: the existing checkout-validation CLI, with its environment defaults,
+  local manifest/tag fixtures, JSON results and ordinary-branch skip behavior;
+- `authority.py`: event/PR/SHA binding, integrated-manifest decoding, fresh tag reads,
+  shared-contract evaluation and the `authority` step's `tag` and `sha` outputs.
+
+Sharing rules does not reuse a prior validation result. Inside the serialized
+publisher, authority independently re-reads the PR, the manifest at the integrated
+SHA and all current tag pages using the normal read-only token. Non-release inputs
+are rejected rather than treated as a successful ordinary-branch skip. The script
+runs with `python3 -I -B`, ignores `PYTHONPATH` and user-site configuration, and
+requires its sibling modules to exist before importing them from the selected
+automation directory. It uses only release-automation modules and the standard
+library; it does not install dependencies, execute package code or Dockerfiles,
+or execute API-returned content.
+
+These scripts are trusted workflow automation under the existing PR/check policy.
+They execute in the publisher job and are not a sandbox: generating the App token
+later does not make arbitrary scripts safe. Both post-merge event conditions,
+API-based operations and the preceding strict Composer checks remain unchanged.
+
+Only after script loading and authority checks succeed does the publisher request
+a repository-scoped `release-bot` token with `Contents: write`, using
+`RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY`. Loading and authority receive
+no App credentials; only the create-ref step receives the installation token.
+That permission covers repository contents and is not limited to one tag; the
+workflow restricts its use to creating a lightweight `refs/tags/vX.Y.Z` at the
+verified integrated SHA. The normal token retains `contents: read` and the
+publisher's `pull-requests: read` grant.
 
 Publication is serialized repository-wide with `cancel-in-progress: false`.
 GitHub can replace a pending concurrency run; this is not a durable release queue.
@@ -79,6 +149,42 @@ A running publisher is not canceled by a newer attempt. The create-only API and
 tag rules must prevent competing writers. Existing tags always fail, even when
 they already reference the requested SHA. No step moves/deletes a tag or chooses
 a fallback version.
+
+## Required PR QA Rollout
+
+`Pull request QA` validates the temporary merge revision for every PR, including
+ordinary, documentation-only, draft, fork, and release PRs, without changing the
+release job's eligibility or its exact `Validate Release Branch` identity.
+Fork runs can require GitHub platform approval. Each `QA (<id>)` job validates
+its own native report and retains current-revision evidence; failed validation
+or required artifact upload fails that job. Main protection requires the seven
+individual checks rather than an aggregate result.
+
+For the latest revision of the existing infrastructure PR, observe the emitted
+names and GitHub Actions integration. The explicit QA names are `QA (qa-scope)`,
+`QA (sniffer)`, `QA (fixer)`, `QA (md)`, `QA (stan)`, `QA (test)`, and
+`QA (openspec)`. Add them to the live `Protect main` ruleset alongside
+`Validate Release Branch` and every other existing required check. Preserve
+up-to-date enforcement, zero approvals, an empty bypass
+list, deletion/force-push protection, and all App/tag protections. Do not extend
+required-check rules to other target branches or modify rules from PR code.
+Git/GitHub mutations require the explicit authorization described in
+[conventions/git.md](git.md); implementation alone does not authorize rollout.
+
+The merge condition requires every configured check to be present and completed
+with `success`, `skipped`, or `neutral`. Any other state or conclusion blocks it,
+including missing, pending, running, failed, cancelled, or timed-out checks.
+An ordinary PR's conditional release check may remain skipped. Skipped/neutral
+results do not prove native execution. Required contexts form an explicit list;
+new or renamed checks must be registered separately.
+
+Record dated authenticated rule rereads and live check/enforcement evidence in
+the change's `verification.md`, separately from local tests. Missing access or
+unverified enforcement leaves activation incomplete. Coordinate any mutating
+probe explicitly, using disposable fixtures where appropriate, without merging
+or publishing a release merely to demonstrate behavior. For rollback, restore
+the prior required-check list before removing the workflow, retaining the release
+check and every other protection; do not delete hooks or historical evidence.
 
 ## Activation gates
 
@@ -110,12 +216,18 @@ evidence and its limits. No real release or App token issuance was exercised.
    bypass list. Integrate the tested workflows through an ordinary infrastructure
    PR, without release naming or a manifest version.
 2. Let an ordinary PR emit `Validate Release Branch`, then require that exact
-   check and any existing required CI, with an up-to-date branch before merge.
+   check and GitHub Actions integration, along with any existing required CI and
+   an up-to-date branch. The ordinary job may be skipped; it need not execute an
+   echo step or allocate a runner. Preserve the already configured check identity
+   during the job-condition and Docker changes.
    A ruleset requiring only PRs is partial bootstrap. Do not declare full
    activation while required checks are absent. Keep the bypass list empty;
    `.github/` and `tools/release/` follow the same PR/check policy without
    mandatory CODEOWNERS or another person's approval.
 3. Verify ordinary merges and a disabled merge queue before requiring the check.
+   For the revised job, separately prove that an emitted skipped ordinary check
+   permits merge and a failed release check blocks it. Historical per-step checks
+   and local simulations do not prove this behavior under remote branch rules.
    Queue integration is outside this change. Record platform or unverified-control
    limitations as blockers; the absence of another reviewer is not a blocker
    under this initial policy.
@@ -172,11 +284,17 @@ automated here. The manifest version is an enforced copy of the branch intent,
 not an independently selected version. `.github/`, `tools/`, and `conventions/`
 are excluded from Composer dist archives; runtime files and `composer.json` remain.
 
-Run release automation tests in dev with:
+Build the tooling and development smoke-test images as documented in
+[environment.md](environment.md), then run release automation tests in dev with:
 
 ```sh
 PYTHONPATH=tools python3 -B -m unittest discover -s tools/release -p 'test_*.py'
 ```
+
+Set `RELEASE_TEST_HOST_WORKSPACE` for a host Docker daemon when the checkout's host
+path differs from `$PWD`. The fixture suite uses the tooling image; it does not
+install project dependencies. Image smoke tests compare both targets' actual
+versions, confirm Xdebug is absent from tooling and check local development behavior.
 
 Keep local fixture evidence separate from authenticated protection verification
 and any future authorized live publication. Unverified infrastructure gates remain

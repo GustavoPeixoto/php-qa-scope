@@ -2,17 +2,150 @@
 
 ## Status
 
-Local release helpers and workflows are implemented and integrated. Infrastructure
-activation gates are verified for the initial policy: PRs and automatic checks
-with zero required human approvals. Main's exact required check and up-to-date
-policy are active; maintainer-observed App installation/permissions match the
-authenticated tag bypass, and isolated negative enforcement probes passed.
-Independent reviewer/CODEOWNER availability is not a prerequisite.
-Tasks **23/23** are complete under the infrastructure-only scope. Actual App token
-issuance and publication have not been exercised. The maintainer deleted the
-authorized disposable fixture after evidence capture; cleanup is complete.
-Real publication is outside this change and requires separate future authorization.
-The manifest still has no `version`; a later authorized real release PR supplies it.
+The original 23 tasks and infrastructure rollout are complete under the initial
+policy: PRs and automatic checks with zero required human approvals. Main's exact
+required check and up-to-date policy remain active; maintainer-observed App
+installation/permissions match the authenticated tag bypass, and the original
+isolated enforcement probes passed. Independent reviewer/CODEOWNER availability
+is not a prerequisite. The original disposable fixture was deleted after evidence
+capture; that historical cleanup remains complete.
+
+Groups 1-9 completed the prior **42 tasks**, including modular authority and
+standardized checkout names/default destinations. Group 10 removes the publisher's
+two sparse-checkout inputs, so all three release jobs now use standard full
+checkouts at their existing revisions. All **44/44 tasks** are complete. Fresh local
+checks for the removal are recorded below; prior local and remote receipts remain
+historical evidence, including their former sparse-layout descriptions.
+Task **6.4** retains its authenticated disposable-fixture evidence: failed release
+validation blocked merge, while an ordinary PR with a skipped required job merged.
+
+Actual App token issuance and publication remain unexercised. No production
+release branch, manifest version, tag or GitHub Release was introduced. A future
+real release remains outside this change and requires separate authorization.
+
+## Standard full publisher checkout — 2026-10-21 UTC
+
+Group 10 removes only `sparse-checkout: tools/release/` and
+`sparse-checkout-cone-mode: false` from the publisher. Existing workflow assertions
+now require sparse inputs to be absent in all three checkout steps. The common
+`Checkout repository` labels, full default workspace, `github.workflow_sha` source,
+PR-head/integrated validation refs, pinned action, disabled credential persistence,
+`python3 -I -B tools/release/authority.py`, fresh API checks, permissions,
+serialization, output contract and late App-token/create-ref sequence are unchanged.
+Additional package files are materialized but are not executed by publication.
+
+The observed tracked working tree was approximately 1.7 MB across 195 files,
+compared with approximately 57 KB under `tools/release/`. These local byte counts
+were not checkout performance or network measurements. Removing a special sparse
+configuration is a simplicity choice, not a new execution boundary.
+
+| Check | Fresh local result |
+| --- | --- |
+| `PYTHONPATH=tools python3 -B -m unittest release.test_validate release.test_cli release.test_authority release.test_workflows` | **21 tests passed**, exit 0, 1.029 seconds; existing native authority, poisoned-candidate/old-path, missing-module, CLI/API/version and publication fixtures remain intact. |
+| `actionlint` **1.7.12**, containerized, both workflow files | Exit 0. |
+| `zizmor` **1.31.1**, containerized, offline, both workflow files | Exit 0; no reported findings, with **1 suppressed** shown by the tool. |
+| Workflow scope comparison | The two sparse-checkout input lines are the only workflow changes in this follow-up. |
+| Module/test scope | Release modules, CLI/rule tests and the native authority fixture were unchanged; only the existing workflow sparse assertions were adjusted. |
+| `openspec validate add-protected-release-workflow --strict` | Passed. |
+| `git diff --check` | Passed. |
+
+The 42 prior completed tasks and their dated receipts remain historical evidence.
+No PHP runtime/image behavior changed or was rebuilt. No authenticated remote
+probes, real App-token issuance, production release, branch, manifest version,
+tag or GitHub Release was created. The fresh tests use simulated API/token/ref
+operations and do not claim live publisher verification. Existing staged work
+was preserved.
+
+## Checkout naming and default destination — 2026-10-21 UTC
+
+Group 9 changes the step labels and checkout destination only. All three checkout
+steps across `validate-release.yml` and `create-release-tag.yml` are named
+`Checkout repository`. The publisher omits `path: .release-automation`, retains
+its sparse `tools/release/` selection at `github.workflow_sha`, and runs
+`python3 -I -B tools/release/authority.py` from the default job workspace. Full
+validation checkouts, their proposed/integrated SHAs, action pins, job/check
+identities, conditions, dependencies, credential persistence, permissions,
+serialization, authority outputs and App-token/create-ref ordering are unchanged.
+
+Existing workflow tests now locate checkout actions within each job instead of
+using the previous unique labels. They assert the common names, unchanged ref
+selectors, full-versus-sparse scopes, and absence of the optional checkout path.
+The native authority fixture loads selected modules under workspace `tools/release/`
+and keeps poisoned candidate modules in a separate tree. A poisoned former
+`.release-automation/tools/release/` tree also remains present during the fixture:
+normal execution ignores it, and removal of each required selected script/module
+fails without fallback, outputs or the simulated credential step. Script provenance,
+API manifest selection, exact integrated-SHA outputs, and isolated sibling imports
+remain covered. No release-module behavior changed.
+
+| Check | Fresh local result |
+| --- | --- |
+| `PYTHONPATH=tools python3 -B -m unittest release.test_validate release.test_cli release.test_authority release.test_workflows` | **21 tests passed**, exit 0, 0.962 seconds; includes existing contract/CLI/API, native authority, publication and mocked Docker/Composer sequencing fixtures. |
+| `actionlint` **1.7.12**, containerized, both workflow files | Exit 0; workflow syntax, expressions and embedded shell checks passed. |
+| `zizmor` **1.31.1**, containerized, offline, both workflow files | Exit 0; no reported findings, with **1 suppressed** shown by the tool. |
+| Scoped workflow comparison | Only three step names, the optional publisher `path`, and its authority command changed; all other workflow text is preserved. |
+| Release-module scope check | `authority.py`, `contract.py`, `github_api.py`, `validate.py` and non-layout rule/CLI tests remain byte-for-byte unchanged from the start of group 9. |
+| `openspec validate add-protected-release-workflow --strict` | Passed. |
+| `git diff --check` | Passed. |
+
+The runtime/Dockerfile and containerized Composer implementation did not change;
+full runtime/image evidence remains in the group 8 and earlier sections. This
+follow-up ran the focused layout/security suites rather than claiming a fresh
+PHP-image build or runtime-parity exercise. No authenticated remote enforcement
+probes, real App-token issuance or live publication were performed. Git staging
+and production settings were preserved; no production release branch, manifest
+version, tag or GitHub Release was created. The dated group 8 section retains its
+former directory and labels as historical evidence, not the current layout.
+
+## Modular publication authority — 2026-10-20 UTC
+
+Group 8 replaces the prior inline/no-checkout publisher implementation. The
+existing 33 completed tasks and dated remote receipts remain historical evidence;
+the checks below are fresh local evidence for the six refactor tasks.
+
+Implemented `contract.py` (pure rules), `github_api.py` (read-only requests and
+complete tag enumeration), `validate.py` (compatible validation CLI), and
+`authority.py` (fresh PR/manifest/tag checks and canonical `tag`/`sha` outputs).
+The publisher sparse-checks out `tools/release/` into `.release-automation` from
+`github.repository` at `github.workflow_sha`, with persisted credentials disabled.
+The integrated event/API SHA continues to select the manifest and tag target.
+Both job conditions, validation dependency, serialization, read-token scopes,
+App-token timing and API create-ref operation are preserved.
+
+A new native-invocation fixture exposed Python's fallback to `PYTHONPATH` when a
+sibling module was absent. The final command uses `python3 -I -B`, and the entry
+point requires both sibling modules before importing from its selected directory.
+Fixtures provide a poisoned candidate tree and a different workflow/package SHA,
+then remove each selected script/module in turn. Success reads the API manifest,
+not the candidate's local manifest; missing scripts/modules fail without outputs,
+candidate execution or the simulated later credential step. The scripts remain
+trusted same-job automation, not a sandbox or an independently reviewed component.
+
+| Check | Fresh local result |
+| --- | --- |
+| `RELEASE_TEST_HOST_WORKSPACE=/home/desenvolvimento/repos/php-qa-scope PYTHONPATH=tools python3 -B -m unittest discover -s tools/release -p 'test_*.py'` | **23 tests passed**, exit 0, 14.423 seconds; includes version/API fixtures, CLI subprocesses, native authority invocation, existing publication simulations and containerized Composer/runtime checks. |
+| Existing tooling/development Docker images | Used the already-built release images; runtime tests checked actual PHP/Composer versions against the unchanged Dockerfile declarations, Xdebug separation and development behavior. No Dockerfile/runtime change or image rebuild was needed. |
+| `actionlint` **1.7.12**, containerized, both workflow files | Exit 0; workflow syntax, expressions and embedded shell checks passed. |
+| `zizmor` **1.31.1**, containerized, offline, both workflow files | Exit 0; no reported findings, with **1 suppressed** shown by the tool. A pedantic-persona run also returned exit 0 with the same summary. Offline checks do not verify remote action/App behavior. |
+| AST comparison with the baseline validation helper | Canonical parsing, version-contract evaluation, the validation CLI `main`, and read-only API request handling are unchanged after extraction. |
+| `openspec validate add-protected-release-workflow --strict` | Passed. |
+| `git diff --check` | Passed. |
+
+Expected-result fixtures remain the rule oracle; sharing code does not make
+agreement between callers proof of correctness. Additional coverage preserves CLI
+arguments/environment defaults and JSON errors, rejects ordinary or malformed
+publication inputs, checks event/PR/SHA binding and manifest decoding, and retains
+stale-baseline, multi-page/error, duplicate-tag/retry, serialization, read-token,
+create-ref failure and exact integrated-SHA scenarios. Workflow tests now assert
+the bounded workflow-revision checkout and invocation rather than extracting
+inline Python or banning every publisher checkout.
+
+No authenticated remote enforcement probes were rerun and no Git/GitHub state was
+changed for this refactor. No production release branch, manifest version, tag,
+GitHub Release or real App token was created. API responses, token generation and
+reference writes in publication fixtures are simulated. Prior remote protection
+receipts do not prove live behavior of the refactored publisher. Actual App token
+issuance and end-to-end publication remain unexercised and outside this change.
 
 ## Current execution scope
 
@@ -26,8 +159,8 @@ They are not unfinished implementation work in this change.
 
 The dated sections below retain historical inspection and rollout evidence,
 including blockers that were later resolved. They describe the state at each
-snapshot; this status section and the completed infrastructure gates below
-describe the final state.
+snapshot; this status section and the follow-up evidence below describe current
+progress. The completed infrastructure gates describe the original rollout.
 
 The continuation installed the distribution's GitHub CLI 2.23.0 in the running
 dev environment (no image definition or package files changed). Browser device
@@ -431,3 +564,136 @@ boundary, create-only ref request and the untouched package/hook files. Local
 completion is supported by the separate settings/enforcement evidence above;
 it does not claim actual App token issuance or live publication has been exercised.
 That future verification is outside the completed infrastructure change.
+
+## Job condition and shared PHP runtime follow-up — 2026-10-18 UTC
+
+### Implemented scope
+
+- `Validate Release Branch` retains its name, PR events, read-only permissions,
+  concurrency and exact proposed-SHA checkout. One `release/` job condition skips
+  ordinary PRs before runner allocation; there is no ordinary-PR echo or repeated
+  step condition. Release forks are rejected before checkout/build, and malformed
+  release names still enter validation and fail explicitly.
+- `docker/php/Dockerfile` now provides `base -> tooling -> development`, preserving
+  the existing PHP and Composer references. Composer is copied once into tooling;
+  development inherits it and retains its ini files, Xdebug/PIE, utilities, user,
+  workspace and long-running command. Compose and Dev Containers are unchanged.
+- Both validation jobs build tooling from their exact checkout and validate the
+  mounted manifest/lock read-only in a disposable container. Python and `gh` remain
+  on the runner, and no API/App credentials enter the build or Composer command.
+  Build/run failure stops validation. A byte comparison against `HEAD` confirmed
+  that the entire `publish` job is unchanged.
+- Environment/release conventions and tests now describe the shared runtime and
+  skipped job. Workflow tests no longer require setup-php, and runtime tests derive
+  version expectations from the shared Dockerfile and compare actual images.
+
+### Fresh local evidence
+
+| Check | Result |
+| --- | --- |
+| `docker build --file docker/php/Dockerfile --target tooling --tag php-qa-scope-release-tooling .` | Exit 0 without development workspace arguments; no development PIE/Xdebug stage executed. |
+| Development target build with `WORKSPACE_DIR=/php-qa-scope` and tag `php-qa-scope-release-development` | Exit 0, retaining the default development user/workspace contract. |
+| Actual PHP and Composer versions in both images | PHP **8.5.10**, Composer **2.10.3**; expectations read from the single Dockerfile declarations rather than independent test pins. |
+| Runtime/development smoke checks | Tooling has no loaded Xdebug; development has Xdebug, user `dev`, and a writable workdir matching `WORKSPACE_DIR`. |
+| Full release suite: `PYTHONPATH=tools python3 -B -m unittest discover -s tools/release -p 'test_*.py' -v` | **16 tests passed**, using `RELEASE_TEST_HOST_WORKSPACE` for the host Docker bind mount. Strict Composer fixtures execute in tooling, including warning/schema/lock failures, lock repair without dependency upgrades, and no package scripts/dependency installation. |
+| Actual native workflow Docker commands with a fixture client | Both validation jobs passed; source/workdir quoting and read-only mounts were checked, including a path with spaces. Build/run exit 19 propagated and prevented subsequent validation. |
+| Actual PR job condition and release fixtures | Ordinary/fork eligibility skips, malformed release failure, release-fork rejection, updated-manifest rejection, exact-checkout ordering and credential-isolation assertions passed. These are local simulations, not authenticated GitHub enforcement proof. |
+| `actionlint` **1.7.12** | Both production workflows passed syntax/expression/embedded-shell checks, exit 0. The prepared isolated fixture workflow also passed. |
+| `zizmor` **1.31.1** `--offline --pedantic .github/workflows` | Exit 0, no findings; one built-in suppression, no repository suppression configuration. Installed in a temporary isolated lint environment without changing project dependencies. |
+| Strict OpenSpec validation and `git diff --check` | Passed; final task/diff reconciliation is recorded by tasks 6.5 and 7.5. |
+
+Shared version declarations remove independent CI pins; mutable upstream image
+tags and Alpine package repositories still prevent a claim of byte-for-byte build
+reproducibility. Local image builds/runtime checks do not establish that GitHub
+ran the new workflow, allocated no runner for a skipped job, or allowed a merge.
+
+### Read-only preflight and pending task 6.4
+
+Authenticated reads as `GustavoPeixoto` confirmed active production `Protect main`
+ruleset **25322253**, no bypass, zero required approvals, and strict/up-to-date
+`Validate Release Branch` from GitHub Actions integration **15368**. No production
+setting was changed. A read of the proposed fixture repository returned HTTP 404;
+the creation script also requires absence before performing any writes.
+
+The prepared probe targets only the public disposable repository
+`GustavoPeixoto/php-qa-scope-skip-fixture-20261018`. It publishes a README and a
+minimal workflow with the same check name/events/job condition, creates the
+ordinary branch `probe/ordinary-skip` and deliberately failing
+`release/invalid-skip-probe`, opens their PRs to fixture `main`, and observes real
+SHA-matched skipped/failed check runs. It then activates fixture rules requiring
+that exact check/integration, up-to-date PRs, zero approvals and no bypass. An
+SHA-matched failing-PR merge must be rejected, followed by a successful ordinary
+PR merge with the skipped check. The repository remains available for inspection
+and separately authorized/manual cleanup. The fixture has no package, secrets,
+publisher, version tags or GitHub Releases; production and App settings stay
+untouched. The existing all-repository App installation may automatically include
+the new fixture, but the probe neither changes that installation nor uses it.
+
+The reviewable probe files are prepared under ignored `tmp/release-skip-probe/`.
+The first approval covers fixture creation, contents/branch/PR writes and ruleset
+activation only. After actual check runs are available, exact PR numbers, head
+SHAs and merge effects must be presented for a separate confirmation before either
+merge attempt. The script separates these phases as `--execute` and
+`--verify-merges`. Both phases have now run with their separate explicit approvals,
+as recorded below.
+Its Python/JSON/workflow syntax checks passed; the script only prints its plan
+without an execution flag. Preparation performed no GitHub writes or local Git
+mutations; approved phase-1 writes are separately recorded below. Each remote
+mutation requires the maintainer's explicit confirmation under `conventions/git.md`.
+Task 6.4 required both merge-enforcement probes to run with approval and fresh
+authenticated evidence; the prior deleted fixture and local simulations could not
+substitute for them. The completed phase-2 evidence is recorded below.
+
+### Authenticated skip-probe phase 1 — 2026-10-18 UTC
+
+The maintainer explicitly authorized the disclosed first batch. Execution from
+**22:48:18 to 22:48:44 UTC** created the public fixture
+[`GustavoPeixoto/php-qa-scope-skip-fixture-20261018`](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018),
+published only its README/minimal workflow, created both fixture branches and PRs,
+observed SHA-matched check runs and activated ruleset **25361371**. A fresh read
+confirmed `refs/heads/main` coverage, active enforcement, no bypass, zero required
+approvals and the strict/up-to-date `Validate Release Branch` check from integration
+**15368**. At the end of phase 1, no merge had been attempted and both PRs were open.
+
+| Fixture PR | Exact head SHA | Actual check conclusion | Ruleset readback state |
+| --- | --- | --- | --- |
+| [#1: Probe ordinary skipped required check](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/1), `probe/ordinary-skip` | `e07fc095d66b35dcfe4a2065285f0fd626f038bf` | `skipped`, [check 117812298126](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/actions/runs/39173831249/job/117812298126), completed at 22:48:34 UTC | `mergeable: true`, `mergeable_state: clean` |
+| [#2: Probe failing release required check](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/2), `release/invalid-skip-probe` | `a22f708e7c52162d50e11844c750dfc459061fd5` | `failure`, [check 117812298257](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/actions/runs/39173831756/job/117812298257), completed at 22:48:39 UTC | `mergeable: true`, `mergeable_state: blocked` |
+
+These are actual remote check conclusions under the new job condition, not local
+simulations. Mergeability readback is useful evidence but does not replace the
+required mutation probes. The next separately confirmed batch must first attempt
+PR #2's exact-SHA `merge` request and require a required-status-check rejection,
+then merge PR #1's exact SHA with method `merge`, updating fixture `main` with a
+merge commit. The fixture has no post-merge publisher; no production refs,
+protections, tags, App credentials or local Git state are changed by these probes.
+At that phase-1 boundary, task 6.4 remained pending the separately authorized merge
+probes. Their subsequent results follow.
+
+### Authenticated skip-probe phase 2 — 2026-10-18 UTC
+
+After reviewing the two exact PRs/head SHAs and confirming that only the temporary
+repository would be affected, the maintainer explicitly authorized proceeding.
+The script re-read both open PR identities and actual check conclusions before
+performing the two SHA-matched `merge` requests, in the approved order.
+
+| Probe | Exact head SHA | Authenticated result |
+| --- | --- | --- |
+| Attempt [fixture PR #2](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/2), method `merge` | `a22f708e7c52162d50e11844c750dfc459061fd5` | HTTP **405**, `Repository rule violations found` and `Required status check "Validate Release Branch" is failing.` No merge occurred; the PR remains open and unmerged. |
+| Merge [fixture PR #1](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/pull/1), method `merge` | `e07fc095d66b35dcfe4a2065285f0fd626f038bf` | Success, `merged: true`, at **22:51:51 UTC**. The skipped required check permitted the zero-review merge, creating commit [`b7c72cc2fc538480cfecd2e3020e5d92acaabbe8`](https://github.com/GustavoPeixoto/php-qa-scope-skip-fixture-20261018/commit/b7c72cc2fc538480cfecd2e3020e5d92acaabbe8) on fixture `main`. |
+
+Final authenticated reads confirmed PR #1 closed/merged at that commit, PR #2
+open/unmerged at its reviewed head, and fixture ruleset **25361371** still active
+on `refs/heads/main`, with no bypass, zero required approvals and strict/up-to-date
+`Validate Release Branch` from integration **15368**. Receipts completed at
+**22:51:53 UTC**. An endpoint audit confirmed every non-read API operation across
+both phases targeted fixture creation or that fixture's contents/refs/PRs/ruleset;
+no production GitHub state or local Git state was mutated.
+
+This completes task 6.4 and all **33/33** tasks. The new proof establishes both
+required-check outcomes through real merge requests, separately from local
+runtime/Composer tests. It does not claim that the Docker workflows were deployed
+to production or that App token issuance/live release publication occurred.
+The temporary public fixture is retained for inspection; its later cleanup is
+separate from the completed change and requires separate authorization or manual
+deletion. No fixture cleanup is represented as already performed.

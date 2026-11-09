@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Run one native PR check and retain its report and diagnostics."""
+
+from pr_qa.cli import main
+
+raise SystemExit(main())
