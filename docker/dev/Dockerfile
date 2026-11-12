@@ -1,6 +1,11 @@
-FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm AS tooling
+FROM node:26.13.1-bookworm AS tooling
 
-RUN corepack enable
+RUN test "$(node --version)" = "v${NODE_VERSION}" \
+ && npm install --global corepack@0.36.0 \
+ && corepack enable \
+ && corepack prepare yarn@1.22.22 --activate \
+ && test "$(corepack --version)" = 0.36.0 \
+ && test "$(yarn --version)" = 1.22.22
 
 RUN yarn global add @fission-ai/openspec@1.14.0 \
  && test "$(openspec --version)" = 1.14.0
@@ -27,6 +32,7 @@ RUN apt-get update \
         pkg-config \
         python3 \
         ripgrep \
+        sudo \
         tar \
         unzip \
         util-linux \

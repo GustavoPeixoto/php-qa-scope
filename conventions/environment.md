@@ -140,8 +140,15 @@ repositories still limit byte-for-byte reproducibility.
 
 ## Shared Node And OpenSpec Tooling
 
-`docker/dev/Dockerfile` defines `tooling -> development`. The existing Node
-reference, Corepack, and OpenSpec 1.14.0 installation live in `tooling`.
+`docker/dev/Dockerfile` defines `tooling -> development`. The official
+`node:26.13.1-bookworm` base pins the complete Node.js version while retaining
+Debian Bookworm. This pins the runtime version, not an immutable image digest.
+Corepack 0.36.0, Yarn Classic 1.22.22, and OpenSpec 1.14.0 are installed in
+`tooling`, with build-time version checks. Both stages use the same Node runtime;
+runtime probes require an exact match with the version declared in `FROM`.
+The development stage explicitly installs `sudo` and renames the base image's
+`node` user to `dev`. NVM, Zsh, Oh My Zsh, and global ESLint from the former
+Microsoft Dev Containers base are not provisioned.
 `development` remains the final default target used by Compose and adds the
 workspace/user setup, OS utilities, Lefthook, context-mode, helper
 scripts, and root/user OpenSpec workflow configuration. CI does not run that

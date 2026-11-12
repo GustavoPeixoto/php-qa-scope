@@ -45,15 +45,18 @@ class RuntimeTests(unittest.TestCase):
 
     def test_node_development_inherits_tooling_and_configuration(self):
         source = (ROOT / "docker/dev/Dockerfile").read_text()
-        major = re.search(r"javascript-node:(\d+)-", source)[1]
+        version = re.search(r"^FROM node:(\d+\.\d+\.\d+)-bookworm AS tooling$", source, re.MULTILINE)[1]
         openspec = re.search(r"@fission-ai/openspec@([\d.]+)", source)[1]
         versions = []
         for stage in ("tooling", "development"):
             image = f"php-qa-scope-pr-node-{stage}"
             node = self.run_image(image, "node", "--version")
-            self.assertTrue(node.startswith(f"v{major}."))
+            self.assertEqual(f"v{version}", node)
             self.assertEqual(openspec, self.run_image(image, "openspec", "--version"))
-            self.run_image(image, "corepack", "--version")
+            self.assertEqual(re.search(r"corepack@([\d.]+)", source)[1],
+                             self.run_image(image, "corepack", "--version"))
+            self.assertEqual(re.search(r"yarn@([\d.]+)", source)[1],
+                             self.run_image(image, "yarn", "--version"))
             versions.append(node)
         self.assertEqual(*versions)
         image = "php-qa-scope-pr-node-development"
