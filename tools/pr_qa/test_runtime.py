@@ -64,10 +64,38 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual("custom", self.run_image(image, "openspec", "config", "get", "profile", user=user))
             workflows = json.loads(self.run_image(image, "openspec", "config", "get", "workflows", user=user))
             self.assertEqual(["propose", "explore", "apply", "update", "sync", "archive", "verify"], workflows)
-        self.run_image(image, "bash", "-ec", 'for tool in gh codex context-mode headroom setup-codex-context-mode setup-codex-headroom setup-git-hooks start-headroom-proxy; do command -v "$tool"; done')
+        self.run_image(image, "bash", "-ec", '''
+            for tool in gh codex context-mode setup-codex-context-mode setup-git-hooks python3; do
+                command -v "$tool"
+            done
+        ''')
         self.assertTrue(self.run_image(image, "gh", "--version").startswith("gh version "))
         self.run_image(image, "sudo", "-n", "true")
         self.assertEqual(str(ROOT), self.run_image(image, "git", "config", "--system", "--get", "safe.directory"))
+
+    def test_context_mode_bootstrap_is_idempotent(self):
+        self.run_image("php-qa-scope-pr-node-development", "bash", "-ec", '''
+            export CODEX_HOME="$(mktemp -d)"
+            trap 'rm -rf "$CODEX_HOME"' EXIT
+            printf '%s\\n' '{"fixture":"codex-runtime"}' > "$CODEX_HOME/auth.json"
+            chmod 0600 "$CODEX_HOME/auth.json"
+            sha256sum "$CODEX_HOME/auth.json" > "$CODEX_HOME/auth.sha256"
+            setup-codex-context-mode
+            sha256sum "$CODEX_HOME/config.toml" "$CODEX_HOME/hooks.json" > "$CODEX_HOME/setup.sha256"
+            setup-codex-context-mode
+            sha256sum --check "$CODEX_HOME/auth.sha256" "$CODEX_HOME/setup.sha256"
+            python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+import tomllib
+
+home = Path(os.environ["CODEX_HOME"])
+config = tomllib.loads((home / "config.toml").read_text())
+assert config["mcp_servers"]["context-mode"]["command"] == "context-mode"
+assert json.loads((home / "hooks.json").read_text())["hooks"]
+PY
+        ''', network="none")
 
     def test_shared_cli_state_survives_container_recreation(self):
         image = "php-qa-scope-pr-node-development"

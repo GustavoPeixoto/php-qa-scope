@@ -143,7 +143,7 @@ repositories still limit byte-for-byte reproducibility.
 `docker/dev/Dockerfile` defines `tooling -> development`. The existing Node
 reference, Corepack, and OpenSpec 1.14.0 installation live in `tooling`.
 `development` remains the final default target used by Compose and adds the
-workspace/user setup, OS utilities, Lefthook, context-mode, Headroom, helper
+workspace/user setup, OS utilities, Lefthook, context-mode, helper
 scripts, and root/user OpenSpec workflow configuration. CI does not run that
 bootstrap or require workspace arguments, environment files, or Compose:
 
@@ -257,9 +257,6 @@ docker compose exec php composer validate --strict
 ```
 
 ## AI Development Tools
-
-Headroom installation, Codex routing, runtime configuration, and verification
-belong in [conventions/headroom.md](headroom.md).
 
 Context-mode usage, context preservation, and Codex hooks belong in
 [conventions/context-mode.md](context-mode.md).
