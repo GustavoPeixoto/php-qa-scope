@@ -1,8 +1,0 @@
-[features]
-hooks = true
-
-[mcp_servers.context-mode]
-command = "context-mode"
-
-[mcp_servers.context-mode.env]
-CONTEXT_MODE_PLATFORM = "codex"

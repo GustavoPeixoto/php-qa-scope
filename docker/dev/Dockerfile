@@ -62,10 +62,10 @@ RUN CI=1 yarn global add lefthook@2.1.16 \
 RUN openspec config set profile custom \
     && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
 
-RUN yarn global add context-mode@1.0.169
+RUN yarn global add context-mode@2.1.8 \
+    && test "$(context-mode --version)" = 2.1.8
 
 COPY docker/dev/bin/ /usr/local/bin/
-COPY docker/dev/.codex/ /usr/local/.codex/
 RUN chmod +x \
     /usr/local/bin/codex \
     /usr/local/bin/setup-codex-context-mode \

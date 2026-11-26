@@ -45,7 +45,10 @@ Image setup creates both directories with dev ownership so new volumes are
 writable without root. The GitHub CLI directory is created with mode `0700`;
 its retained volume preserves that mode. Dev Container post-create initialization
 repairs ownership of both directories while preserving existing files, their
-modes, and the Codex setup commands. It does not repeat chmod.
+modes. It also installs Git hooks without depending on the Codex executable.
+Context-mode setup runs after attach, waiting for the extension-provided Codex
+binary as described in [context-mode.md](context-mode.md). Post-create does not
+repeat chmod.
 
 Rebuild/recreate the active dev environment only in a coordinated, separately
 authorized step. After recreation, run browser authentication only with the

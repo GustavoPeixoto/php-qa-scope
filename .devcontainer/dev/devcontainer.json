@@ -91,6 +91,7 @@
     }
   },
   "remoteUser": "dev",
-  "postCreateCommand": "sudo chown -R dev:dev /home/dev/.codex /home/dev/.config/gh && setup-codex-context-mode && setup-git-hooks",
-  "waitFor": "postCreateCommand"
+  "postCreateCommand": "sudo chown -R dev:dev /home/dev/.codex /home/dev/.config/gh && setup-git-hooks",
+  "waitFor": "postCreateCommand",
+  "postAttachCommand": "setup-codex-context-mode --wait-for-codex 180"
 }

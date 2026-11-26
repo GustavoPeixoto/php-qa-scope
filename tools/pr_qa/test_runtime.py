@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import unittest
 import uuid
 
@@ -14,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @unittest.skipUnless(os.environ.get("PR_QA_RUNTIME_TESTS") == "1", "Requires four built QA images")
 class RuntimeTests(unittest.TestCase):
-    def run_image(self, image, *argv, user=None, mounts=(), network=None):
+    def run_image(self, image, *argv, user=None, mounts=(), network=None, copies=(), payloads=()):
         command = ["docker", "create"]
         if user:
             command += ["--user", user]
@@ -27,6 +28,18 @@ class RuntimeTests(unittest.TestCase):
         if not re.fullmatch(r"[a-f0-9]{64}", container):
             raise ValueError("Missing runtime probe container identity")
         try:
+            for source, target in copies:
+                subprocess.run(["docker", "cp", str(source), f"{container}:{target}"],
+                               check=True, capture_output=True)
+            for target, content in payloads:
+                # docker cp requires a local source; keep generated metadata out
+                # of the checkout while testing the actual Dev Container commands.
+                with tempfile.NamedTemporaryFile(mode="w") as source:
+                    source.write(content)
+                    source.flush()
+                    os.chmod(source.name, 0o644)
+                    subprocess.run(["docker", "cp", source.name, f"{container}:{target}"],
+                                   check=True, capture_output=True)
             subprocess.run(["docker", "start", container], check=True, capture_output=True)
             subprocess.run(["docker", "wait", container], check=True, capture_output=True)
             state = json.loads(subprocess.run(
@@ -77,28 +90,28 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(str(ROOT), self.run_image(image, "git", "config", "--system", "--get", "safe.directory"))
 
     def test_context_mode_bootstrap_is_idempotent(self):
-        self.run_image("php-qa-scope-pr-node-development", "bash", "-ec", '''
-            export CODEX_HOME="$(mktemp -d)"
-            trap 'rm -rf "$CODEX_HOME"' EXIT
-            printf '%s\\n' '{"fixture":"codex-runtime"}' > "$CODEX_HOME/auth.json"
-            chmod 0600 "$CODEX_HOME/auth.json"
-            sha256sum "$CODEX_HOME/auth.json" > "$CODEX_HOME/auth.sha256"
-            setup-codex-context-mode
-            sha256sum "$CODEX_HOME/config.toml" "$CODEX_HOME/hooks.json" > "$CODEX_HOME/setup.sha256"
-            setup-codex-context-mode
-            sha256sum --check "$CODEX_HOME/auth.sha256" "$CODEX_HOME/setup.sha256"
-            python3 - <<'PY'
-import json
-import os
-from pathlib import Path
-import tomllib
-
-home = Path(os.environ["CODEX_HOME"])
-config = tomllib.loads((home / "config.toml").read_text())
-assert config["mcp_servers"]["context-mode"]["command"] == "context-mode"
-assert json.loads((home / "hooks.json").read_text())["hooks"]
-PY
-        ''', network="none")
+        override = os.environ.get("CONTEXT_MODE_TEST_CODEX_BINARY")
+        candidates = list(Path(os.environ.get("CODEX_VSCODE_EXTENSIONS_DIR",
+                                             "/home/dev/.vscode-server/extensions"))
+                          .glob("openai.chatgpt-*/bin/*/codex"))
+        if override:
+            binary = Path(override)
+        elif candidates:
+            binary = max(candidates, key=lambda p: [int(t) if t.isdigit() else t
+                                                    for t in re.split(r"(\d+)", str(p))])
+        else:
+            self.fail("Official setup needs a real Codex CLI; set CONTEXT_MODE_TEST_CODEX_BINARY")
+        source = (ROOT / "docker/dev/Dockerfile").read_text()
+        version = re.search(r"context-mode@([\d.]+)", source)[1]
+        output = self.run_image(
+            "php-qa-scope-pr-node-development", "python3", "-c",
+            (ROOT / "tools/pr_qa/context_mode_probe.py").read_text(), version,
+            copies=((binary, "/tmp/context-mode-real-codex"),
+                    (ROOT / "lefthook.yml", "/tmp/context-mode-lefthook.yml")), network="none",
+            payloads=(("/tmp/context-mode-devcontainer.json", json.dumps(json.loads(re.sub(
+                r"(?m)^\s*//.*$", "", (ROOT / ".devcontainer/dev/devcontainer.json").read_text())))),))
+        self.assertEqual({"version": version, "cold_lifecycle": "passed", "fresh": "passed", "existing": "passed", "mcp": "passed",
+                          "hooks": "passed"}, json.loads(output))
 
     def test_shared_cli_state_survives_container_recreation(self):
         image = "php-qa-scope-pr-node-development"
