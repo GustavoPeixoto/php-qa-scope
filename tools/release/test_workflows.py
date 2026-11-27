@@ -27,6 +27,19 @@ MERGE_WORKFLOW = (WORKFLOWS / "create-release-tag.yml").read_text()
 SHA = "a" * 40
 
 
+def job_section(source, job_id):
+    """Select one job without including any adjacent job or workflow header."""
+    match = re.search(r"^  " + re.escape(job_id) + r":\n(?:(?:    .*|)\n?)*", source, re.MULTILINE)
+    if match is None:
+        raise AssertionError(f"Missing job {job_id}")
+    return match.group(0)
+
+
+PR_VALIDATION = job_section(PR_WORKFLOW, "validate")
+MERGED_VALIDATION = job_section(MERGE_WORKFLOW, "validate")
+PUBLISHER = job_section(MERGE_WORKFLOW, "publish")
+
+
 def block(source, marker):
     """Extract a literal run block from the real workflow without a YAML dependency."""
     section = source.split(marker, 1)[1]
@@ -39,13 +52,13 @@ def block(source, marker):
     return "\n".join(body)
 
 
-CREATE = block(MERGE_WORKFLOW, "- name: Create immutable lightweight release ref")
-ORIGIN = block(PR_WORKFLOW, "- name: Check release origin")
+CREATE = block(PUBLISHER, "- name: Create immutable lightweight release ref")
+ORIGIN = block(PR_VALIDATION, "- name: Check release origin")
 
 
 def pr_eligible(branch):
     """Evaluate the actual PR job expression with Actions' case-insensitive startsWith."""
-    expression = re.search(r"^    if: (.+)$", PR_WORKFLOW, re.MULTILINE).group(1)
+    expression = re.search(r"^    if: (.+)$", PR_VALIDATION, re.MULTILINE).group(1)
     expression = expression.replace("github.event.pull_request.head.ref", repr(branch))
     return eval(expression, {"__builtins__": {},
                              "startsWith": lambda value, prefix: value.casefold().startswith(prefix.casefold())})
@@ -79,8 +92,8 @@ def merged_pr(fixture):
 
 
 def eligible(event, repository=REPOSITORY):
-    """Evaluate the limited Actions condition used by both post-merge jobs."""
-    source = MERGE_WORKFLOW.split("    if: >-\n", 1)[1].split("    runs-on:", 1)[0]
+    """Evaluate the limited Actions condition used by both tag-publication jobs."""
+    source = PUBLISHER.split("    if: >-\n", 1)[1].split("    runs-on:", 1)[0]
     pr = event["pull_request"]
     values = {
         "github.event.pull_request.merged": pr.get("merged"),
@@ -148,6 +161,21 @@ class PublisherHarness:
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_job_sections_exclude_adjacent_jobs_and_workflow_permissions(self):
+        source = ("permissions:\n  contents: read\njobs:\n"
+                  "  publish:\n    permissions:\n      contents: read\n    steps:\n"
+                  "      - name: Example\n        run: |\n          echo publish\n"
+                  "  github-release:\n    permissions:\n      contents: write\n    steps: []\n")
+        publisher = job_section(source, "publish")
+        self.assertTrue(publisher.startswith("  publish:\n"))
+        self.assertIn("echo publish", publisher)
+        self.assertNotIn("github-release", publisher)
+        self.assertNotIn("contents: write", publisher)
+        self.assertEqual("  github-release:\n    permissions:\n      contents: write\n    steps: []\n",
+                         job_section(source, "github-release"))
+        with self.assertRaisesRegex(AssertionError, "Missing job"):
+            job_section(source, "missing")
+
     def test_same_fixtures_execute_actual_authority_entry_point(self):
         for fixture in FIXTURES:
             with self.subTest(fixture=fixture):
@@ -246,7 +274,7 @@ class WorkflowTests(unittest.TestCase):
     def test_serialized_different_versions_recheck_fresh_state(self):
         # The fixture scheduler models the documented Actions concurrency contract.
         # Assert that the real workflow puts all authority/token/create steps inside it.
-        publisher = MERGE_WORKFLOW.split('  publish:', 1)[1]
+        publisher = PUBLISHER
         self.assertIn('group: protected-release-publication\n      cancel-in-progress: false', publisher)
         self.assertLess(publisher.index('    concurrency:'), publisher.index('    steps:'))
         fixtures = [
@@ -363,7 +391,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotIn("paths-ignore:", PR_WORKFLOW)
         self.assertNotIn("secrets.", PR_WORKFLOW)
         self.assertNotIn("app-token", PR_WORKFLOW)
-        job_header = PR_WORKFLOW.split("jobs:", 1)[1].split("    steps:", 1)[0]
+        job_header = PR_VALIDATION.split("    steps:", 1)[0]
         self.assertIn("    if: startsWith(github.event.pull_request.head.ref, 'release/')", job_header)
         self.assertIn("name: Validate Release Branch", job_header)
         self.assertNotIn("Ordinary PR", PR_WORKFLOW)
@@ -405,8 +433,8 @@ class WorkflowTests(unittest.TestCase):
             validate("release/v0.1.0", {"version": "0.2.0"}, [], REPOSITORY, REPOSITORY)
 
     def test_native_container_commands_and_failure_sequencing(self):
-        for source, manifest_step in [(PR_WORKFLOW, "Validate manifest and lock"),
-                                      (MERGE_WORKFLOW.split("  publish:", 1)[0], "Validate integrated manifest and lock")]:
+        for source, manifest_step in [(PR_VALIDATION, "Validate manifest and lock"),
+                                      (MERGED_VALIDATION, "Validate integrated manifest and lock")]:
             build = step_command(source, "Build shared PHP and Composer tooling")
             check = step_command(source, manifest_step)
             with tempfile.TemporaryDirectory(prefix="release workflow ") as temporary:
@@ -448,7 +476,7 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotIn("tools: composer:", source)
             self.assertLess(source.index("uses: actions/checkout@"), source.index("Build shared PHP"))
             self.assertLess(source.index("Build shared PHP"), source.index(manifest_step))
-            contract_step = "Validate release contract" if source == PR_WORKFLOW else "Validate integrated release contract"
+            contract_step = "Validate release contract" if source == PR_VALIDATION else "Validate integrated release contract"
             self.assertLess(source.index(manifest_step), source.index(contract_step))
             container_commands = build + check
             self.assertNotIn("GH_TOKEN", container_commands)
@@ -457,8 +485,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertLess(PR_WORKFLOW.index("Check release origin"), PR_WORKFLOW.index("uses: actions/checkout@"))
 
     def test_workflow_security_invariants(self):
-        publisher = MERGE_WORKFLOW.split("  publish:", 1)[1]
-        validation = MERGE_WORKFLOW.split("  publish:", 1)[0]
+        publisher = PUBLISHER
+        validation = MERGED_VALIDATION
         automation = checkout_step(publisher)
         self.assertIn("uses: actions/checkout@", automation)
         self.assertIn("repository: ${{ github.repository }}", automation)
@@ -470,10 +498,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotIn("secrets.", automation)
         self.assertLess(publisher.index("uses: actions/checkout@"), publisher.index("id: authority"))
         self.assertEqual("python3 -I -B tools/release/authority.py",
-                         step_command(MERGE_WORKFLOW, "Recheck current publication authority"))
+                         step_command(publisher, "Recheck current publication authority"))
         self.assertNotIn("secrets.", validation)
         self.assertIn("needs: validate", publisher)
-        gates = re.findall(r'    if: >-\n((?:      .+\n)+)', MERGE_WORKFLOW)
+        gates = re.findall(r'    if: >-\n((?:      .+\n)+)', validation + publisher)
         self.assertEqual(2, len(gates))
         self.assertEqual(gates[0], gates[1])
         self.assertIn("group: protected-release-publication\n      cancel-in-progress: false", publisher)
@@ -484,7 +512,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(1, publisher.count("steps.app-token.outputs.token"))
         self.assertIn("GH_TOKEN: ${{ steps.app-token.outputs.token }}", publisher)
         self.assertIn("pull-requests: read", publisher)
-        for job, ref in [(PR_WORKFLOW, "github.event.pull_request.head.sha"),
+        for job, ref in [(PR_VALIDATION, "github.event.pull_request.head.sha"),
                          (validation, "github.event.pull_request.merge_commit_sha")]:
             checkout = checkout_step(job)
             self.assertIn("ref: ${{ " + ref + " }}", checkout)

@@ -89,9 +89,9 @@ environment, review the diff, and confirm no dependency versions changed before
 rerunning validation. Do not run this recovery command unless a stale lock needs
 repair; it may contact configured repositories.
 
-All three checkout steps across the two release workflows are named
+All four checkout steps across the two release workflows are named
 `Checkout repository`. PR validation selects the exact proposed head, integrated
-validation selects `merge_commit_sha`, and publication selects `github.workflow_sha`.
+validation selects `merge_commit_sha`, and both publication jobs select `github.workflow_sha`.
 The common step label does not change job/check names or revision selection.
 
 After an eligible merge, `Validate Merged Release` checks out `merge_commit_sha`
@@ -103,13 +103,13 @@ workspace, from this repository at the exact `github.workflow_sha` containing th
 executing workflow. Persisted credentials are disabled, and no optional checkout
 `path`, `sparse-checkout` or `sparse-checkout-cone-mode` inputs are set. Its command
 remains `python3 -I -B tools/release/authority.py`, executed from the workspace root.
-All three jobs now use normal full checkouts while retaining their own revision
+All four jobs use normal full checkouts while retaining their own revision
 selectors. Package files being present does not cause them to execute: publication
 runs only the selected release automation and reads the manifest and tag target
 at the separately verified integrated SHA. Missing automation fails before token
 creation without fallback to another revision, package checkout or inline code.
 
-Release automation is divided into four modules:
+Tag validation and publication authority are divided into four modules:
 
 - `contract.py`: pure eligibility, canonical version, manifest agreement, baseline,
   duplicate-target and exact-successor rules;
@@ -143,12 +143,72 @@ workflow restricts its use to creating a lightweight `refs/tags/vX.Y.Z` at the
 verified integrated SHA. The normal token retains `contents: read` and the
 publisher's `pull-requests: read` grant.
 
-Publication is serialized repository-wide with `cancel-in-progress: false`.
+Protected-tag publication is serialized repository-wide with
+`cancel-in-progress: false`.
 GitHub can replace a pending concurrency run; this is not a durable release queue.
 A running publisher is not canceled by a newer attempt. The create-only API and
 tag rules must prevent competing writers. Existing tags always fail, even when
 they already reference the requested SHA. No step moves/deletes a tag or chooses
 a fallback version.
+
+### GitHub Release presentation
+
+After `publish` succeeds, the dependent `github-release` job, named
+`Publish GitHub Release`, publishes the additional GitHub Release. The publisher
+exports `tag` and `sha` directly from its already validated `authority` step.
+The new job consumes those outputs, never the current `main` or source branch
+tip, and first verifies the exact remote lightweight tag and integrated SHA.
+Missing tags, unexpected reference types, mismatched SHAs, and failed or malformed
+API responses fail the job without repairing or changing the tag.
+
+Only this new job grants its normal `GITHUB_TOKEN` `contents: write`. Existing
+jobs and workflow defaults retain their permissions; the App token remains
+exclusive to protected-tag creation. The job uses the runner's GitHub CLI and the
+standard-library coordinator `tools/release/github_release.py`. Its
+`Checkout repository` step follows the protected publisher's pinned action and
+selects this repository at the exact `github.workflow_sha`, with
+`persist-credentials: false`. It uses a full checkout in the default workspace,
+without custom paths or sparse settings, and then runs:
+
+```sh
+python3 -I -B tools/release/github_release.py
+```
+
+The script retains the `GITHUB_REPOSITORY`, `TAG`, `MERGE_SHA`, and `GH_TOKEN`
+environment inputs. Its automation revision is independent of the verified tag
+target. Missing checkout content or a missing script fails before Release API
+activity, without fallback to another revision, directory, or inline code. Package
+files present in the checkout are not executed; the job installs no dependencies,
+adds no secrets or PAT, and introduces no publication trigger.
+
+Release discovery reads every page, including drafts visible to the write-capable
+token. Only complete successful enumeration without a matching tag means absence.
+Authentication, network, API, malformed-response, or pagination failures are
+fatal; even HTTP 404 from the listing endpoint is not an absent-Release result.
+A matching normal published Release completes the job without editing its title,
+notes, or assets. A matching draft or prerelease is a conflict and fails without
+changing that Release.
+
+For an absent Release, the job runs the equivalent of this command using the
+validated outputs, including for the first version `v0.1.0`:
+
+```sh
+gh release create "$TAG" \
+  --repo "$GITHUB_REPOSITORY" \
+  --verify-tag \
+  --target "$MERGE_SHA" \
+  --title "$TAG" \
+  --generate-notes \
+  --draft=false \
+  --prerelease=false
+```
+
+The title equals the tag and GitHub generates the notes. No custom notes or
+additional uploaded assets are supplied; GitHub's automatic source archives
+are sufficient. `--verify-tag` prevents the CLI from creating a missing tag.
+This command documents future production behavior; do not execute it as an
+infrastructure test. A failed or skipped publisher prevents this entire job
+from running. Existing protected-tag serialization and immutability remain intact.
 
 ## Required PR QA Rollout
 
@@ -257,14 +317,16 @@ infrastructure work.
 
 ## Recovery and rollback
 
-If publication fails or is canceled, the merged code remains on `main` and its
-tag may be absent. Inspect the original run, PR integrated SHA, current remote
+### Protected-tag publication
+
+If protected-tag publication fails or is canceled, the merged code remains on
+`main` and its tag may be absent. Inspect the original run, PR integrated SHA, current remote
 tags, and error. Resolve the cause before retrying that existing merged-PR run.
 Retry only when its exact target is absent and its candidate remains a permitted
 successor of the current numeric maximum. A previous successful PR check is not
 current publication authority. An existing target, even at the correct SHA, makes
-a retry fail; verify the prior publication instead. Never treat an API error as
-an absent ref.
+a retry fail; verify the prior tag publication and recover its Release separately
+when needed. Never treat an API error as an absent ref.
 
 For example, if `release/v1.0.1` merged but `v1.1.0` published before recovery,
 `1.0.1` is stale: prepare a new PR for `1.1.1`, `1.2.0`, or `2.0.0`. Do not move
@@ -272,16 +334,45 @@ For example, if `release/v1.0.1` merged but `v1.1.0` published before recovery,
 apply the same retry prerequisites. If a published package needs correction,
 publish a successor. No manual publication trigger or bypass is provided.
 
+### GitHub Release publication
+
+If `publish` succeeded but `github-release` failed, the version tag already
+exists. Inspect the Release job's error, resolve the cause, and rerun only
+`Publish GitHub Release` in that original workflow run. Using **Re-run failed
+jobs** is suitable when only that job failed. Do not choose **Re-run all jobs**
+for this recovery: tag authority still rejects an existing tag, even at the
+correct SHA. Successful upstream jobs retain their outputs for partial reruns,
+so recovery reuses the original validated tag and integrated SHA without
+repeating version progression, App-token generation, or protected-tag creation.
+
+Every attempt rechecks the remote tag. If the Release already exists as a normal
+published Release, the rerun succeeds without changing its title, notes, or assets.
+This also recovers a create request that succeeded remotely before the client
+reported failure. Draft/prerelease conflicts require investigation and separately
+authorized resolution; automation does not edit or delete them. Lookup failures
+never authorize duplicate creation. An absent or mismatched tag is a failure,
+not permission to create, move, or delete a reference.
+
+Partial recovery is subject to GitHub's workflow rerun time and attempt limits;
+see [Re-running workflows and jobs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs).
+This workflow provides no alternate publication trigger. Any corrective
+Git/GitHub operation still requires its own concrete authorization under
+[git.md](git.md). Release presentation failure does not undo the tag or the
+independent Packagist version discovery.
+
+### Rollback
+
 For an authorized rollback, stop future publisher runs and revert automation
-through review, retaining protections and all published tags. Do not undo a release
-by deleting or moving its ref.
+through review, retaining protections and all published tags and Releases. Do not
+undo a release by deleting or moving its ref.
 
 ## Distribution and verification
 
-These workflows create Git tags, not GitHub Releases. Packagist discovers package
-versions from VCS tags; its registration/webhook setup is separate and is not
-automated here. The manifest version is an enforced copy of the branch intent,
-not an independently selected version. `.github/`, `tools/`, and `conventions/`
+These workflows create protected Git tags and then publish GitHub Releases as
+additional version presentation. The existing Packagist integration discovers
+package versions from VCS tags; its registration/webhook configuration remains
+independent and unchanged. The manifest version is an enforced copy of the branch
+intent, not an independently selected version. `.github/`, `tools/`, and `conventions/`
 are excluded from Composer dist archives; runtime files and `composer.json` remain.
 
 Build the tooling and development smoke-test images as documented in
