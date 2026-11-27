@@ -48,6 +48,9 @@ jobs:
   publish:
     name: Publish protected release tag
     needs: validate
+    outputs:
+      tag: ${{ steps.authority.outputs.tag }}
+      sha: ${{ steps.authority.outputs.sha }}
     permissions:
       contents: read
       pull-requests: read # Re-read merged PR identity and eligibility through the API.
@@ -92,3 +95,23 @@ jobs:
         run: |
           gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
             -f ref="refs/tags/$TAG" -f sha="$MERGE_SHA"
+
+  github-release:
+    name: Publish GitHub Release
+    needs: publish
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Verify tag and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.publish.outputs.tag }}
+          MERGE_SHA: ${{ needs.publish.outputs.sha }}
+        run: python3 -I -B tools/release/github_release.py
