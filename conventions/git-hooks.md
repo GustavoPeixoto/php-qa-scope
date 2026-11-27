@@ -194,7 +194,7 @@ marker rejects invoked pushes, including empty updates and deletions. Hooks and
 bootstrap do not automatically rewrite existing env files or recreate containers.
 
 Rebuild/recreate dev after introducing the dispatcher or changing its pin. The
-existing post-create chain runs `setup-git-hooks` after Codex context/Headroom setup.
+existing post-create chain runs `setup-git-hooks` after Codex context-mode setup.
 Explicit installation/reinstallation from the repository root in dev is:
 
 ```sh
@@ -213,7 +213,7 @@ Existing launchers MUST be explicitly reinstalled with `setup-git-hooks` after
 this routing revision; updating repository files alone does not add the marker.
 Agents do not automatically install/reinstall contributor hooks during verification.
 Missing dispatcher/Python fails the hook. No start/attach lifecycle checks are
-introduced, and existing Headroom startup remains unchanged.
+introduced.
 
 For an authorized rollback, resolve the active hook path with
 `git rev-parse --git-path hooks/pre-push`, verify that ownership marker, and remove

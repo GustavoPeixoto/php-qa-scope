@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import unittest
 import uuid
 
@@ -14,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @unittest.skipUnless(os.environ.get("PR_QA_RUNTIME_TESTS") == "1", "Requires four built QA images")
 class RuntimeTests(unittest.TestCase):
-    def run_image(self, image, *argv, user=None, mounts=(), network=None):
+    def run_image(self, image, *argv, user=None, mounts=(), network=None, copies=(), payloads=()):
         command = ["docker", "create"]
         if user:
             command += ["--user", user]
@@ -27,6 +28,18 @@ class RuntimeTests(unittest.TestCase):
         if not re.fullmatch(r"[a-f0-9]{64}", container):
             raise ValueError("Missing runtime probe container identity")
         try:
+            for source, target in copies:
+                subprocess.run(["docker", "cp", str(source), f"{container}:{target}"],
+                               check=True, capture_output=True)
+            for target, content in payloads:
+                # docker cp requires a local source; keep generated metadata out
+                # of the checkout while testing the actual Dev Container commands.
+                with tempfile.NamedTemporaryFile(mode="w") as source:
+                    source.write(content)
+                    source.flush()
+                    os.chmod(source.name, 0o644)
+                    subprocess.run(["docker", "cp", source.name, f"{container}:{target}"],
+                                   check=True, capture_output=True)
             subprocess.run(["docker", "start", container], check=True, capture_output=True)
             subprocess.run(["docker", "wait", container], check=True, capture_output=True)
             state = json.loads(subprocess.run(
@@ -45,15 +58,18 @@ class RuntimeTests(unittest.TestCase):
 
     def test_node_development_inherits_tooling_and_configuration(self):
         source = (ROOT / "docker/dev/Dockerfile").read_text()
-        major = re.search(r"javascript-node:(\d+)-", source)[1]
+        version = re.search(r"^FROM node:(\d+\.\d+\.\d+)-bookworm AS tooling$", source, re.MULTILINE)[1]
         openspec = re.search(r"@fission-ai/openspec@([\d.]+)", source)[1]
         versions = []
         for stage in ("tooling", "development"):
             image = f"php-qa-scope-pr-node-{stage}"
             node = self.run_image(image, "node", "--version")
-            self.assertTrue(node.startswith(f"v{major}."))
+            self.assertEqual(f"v{version}", node)
             self.assertEqual(openspec, self.run_image(image, "openspec", "--version"))
-            self.run_image(image, "corepack", "--version")
+            self.assertEqual(re.search(r"corepack@([\d.]+)", source)[1],
+                             self.run_image(image, "corepack", "--version"))
+            self.assertEqual(re.search(r"yarn@([\d.]+)", source)[1],
+                             self.run_image(image, "yarn", "--version"))
             versions.append(node)
         self.assertEqual(*versions)
         image = "php-qa-scope-pr-node-development"
@@ -64,10 +80,38 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual("custom", self.run_image(image, "openspec", "config", "get", "profile", user=user))
             workflows = json.loads(self.run_image(image, "openspec", "config", "get", "workflows", user=user))
             self.assertEqual(["propose", "explore", "apply", "update", "sync", "archive", "verify"], workflows)
-        self.run_image(image, "bash", "-ec", 'for tool in gh codex context-mode headroom setup-codex-context-mode setup-codex-headroom setup-git-hooks start-headroom-proxy; do command -v "$tool"; done')
+        self.run_image(image, "bash", "-ec", '''
+            for tool in gh codex context-mode setup-codex-context-mode setup-git-hooks python3; do
+                command -v "$tool"
+            done
+        ''')
         self.assertTrue(self.run_image(image, "gh", "--version").startswith("gh version "))
         self.run_image(image, "sudo", "-n", "true")
         self.assertEqual(str(ROOT), self.run_image(image, "git", "config", "--system", "--get", "safe.directory"))
+
+    def test_context_mode_bootstrap_is_idempotent(self):
+        override = os.environ.get("CONTEXT_MODE_TEST_CODEX_BINARY")
+        candidates = list(Path(os.environ.get("CODEX_VSCODE_EXTENSIONS_DIR",
+                                             "/home/dev/.vscode-server/extensions"))
+                          .glob("openai.chatgpt-*/bin/*/codex"))
+        if override:
+            binary = Path(override)
+        elif candidates:
+            binary = max(candidates, key=lambda p: [int(t) if t.isdigit() else t
+                                                    for t in re.split(r"(\d+)", str(p))])
+        else:
+            self.fail("Official setup needs a real Codex CLI; set CONTEXT_MODE_TEST_CODEX_BINARY")
+        source = (ROOT / "docker/dev/Dockerfile").read_text()
+        version = re.search(r"context-mode@([\d.]+)", source)[1]
+        output = self.run_image(
+            "php-qa-scope-pr-node-development", "python3", "-c",
+            (ROOT / "tools/pr_qa/context_mode_probe.py").read_text(), version,
+            copies=((binary, "/tmp/context-mode-real-codex"),
+                    (ROOT / "lefthook.yml", "/tmp/context-mode-lefthook.yml")), network="none",
+            payloads=(("/tmp/context-mode-devcontainer.json", json.dumps(json.loads(re.sub(
+                r"(?m)^\s*//.*$", "", (ROOT / ".devcontainer/dev/devcontainer.json").read_text())))),))
+        self.assertEqual({"version": version, "cold_lifecycle": "passed", "fresh": "passed", "existing": "passed", "mcp": "passed",
+                          "hooks": "passed"}, json.loads(output))
 
     def test_shared_cli_state_survives_container_recreation(self):
         image = "php-qa-scope-pr-node-development"

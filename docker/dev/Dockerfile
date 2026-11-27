@@ -1,6 +1,11 @@
-FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm AS tooling
+FROM node:26.13.1-bookworm AS tooling
 
-RUN corepack enable
+RUN test "$(node --version)" = "v${NODE_VERSION}" \
+ && npm install --global corepack@0.36.0 \
+ && corepack enable \
+ && corepack prepare yarn@1.22.22 --activate \
+ && test "$(corepack --version)" = 0.36.0 \
+ && test "$(yarn --version)" = 1.22.22
 
 RUN yarn global add @fission-ai/openspec@1.14.0 \
  && test "$(openspec --version)" = 1.14.0
@@ -26,9 +31,8 @@ RUN apt-get update \
         openssh-client \
         pkg-config \
         python3 \
-        python3-pip \
-        python3-venv \
         ripgrep \
+        sudo \
         tar \
         unzip \
         util-linux \
@@ -58,20 +62,14 @@ RUN CI=1 yarn global add lefthook@2.1.16 \
 RUN openspec config set profile custom \
     && openspec config set workflows '["propose","explore","apply","update","sync","archive","verify"]'
 
-RUN yarn global add context-mode@1.0.169
-
-RUN python3 -m venv /opt/headroom \
-    && /opt/headroom/bin/pip install --no-cache-dir --only-binary=headroom-ai 'headroom-ai[proxy]==0.39.1' \
-    && ln -s /opt/headroom/bin/headroom /usr/local/bin/headroom
+RUN yarn global add context-mode@2.1.8 \
+    && test "$(context-mode --version)" = 2.1.8
 
 COPY docker/dev/bin/ /usr/local/bin/
-COPY docker/dev/.codex/ /usr/local/.codex/
 RUN chmod +x \
     /usr/local/bin/codex \
     /usr/local/bin/setup-codex-context-mode \
-    /usr/local/bin/setup-codex-headroom \
-    /usr/local/bin/setup-git-hooks \
-    /usr/local/bin/start-headroom-proxy
+    /usr/local/bin/setup-git-hooks
 
 USER ${USERNAME}
 

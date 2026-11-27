@@ -45,7 +45,10 @@ Image setup creates both directories with dev ownership so new volumes are
 writable without root. The GitHub CLI directory is created with mode `0700`;
 its retained volume preserves that mode. Dev Container post-create initialization
 repairs ownership of both directories while preserving existing files, their
-modes, and the Codex setup commands. It does not repeat chmod.
+modes. It also installs Git hooks without depending on the Codex executable.
+Context-mode setup runs after attach, waiting for the extension-provided Codex
+binary as described in [context-mode.md](context-mode.md). Post-create does not
+repeat chmod.
 
 Rebuild/recreate the active dev environment only in a coordinated, separately
 authorized step. After recreation, run browser authentication only with the
@@ -140,10 +143,17 @@ repositories still limit byte-for-byte reproducibility.
 
 ## Shared Node And OpenSpec Tooling
 
-`docker/dev/Dockerfile` defines `tooling -> development`. The existing Node
-reference, Corepack, and OpenSpec 1.14.0 installation live in `tooling`.
+`docker/dev/Dockerfile` defines `tooling -> development`. The official
+`node:26.13.1-bookworm` base pins the complete Node.js version while retaining
+Debian Bookworm. This pins the runtime version, not an immutable image digest.
+Corepack 0.36.0, Yarn Classic 1.22.22, and OpenSpec 1.14.0 are installed in
+`tooling`, with build-time version checks. Both stages use the same Node runtime;
+runtime probes require an exact match with the version declared in `FROM`.
+The development stage explicitly installs `sudo` and renames the base image's
+`node` user to `dev`. NVM, Zsh, Oh My Zsh, and global ESLint from the former
+Microsoft Dev Containers base are not provisioned.
 `development` remains the final default target used by Compose and adds the
-workspace/user setup, OS utilities, Lefthook, context-mode, Headroom, helper
+workspace/user setup, OS utilities, Lefthook, context-mode, helper
 scripts, and root/user OpenSpec workflow configuration. CI does not run that
 bootstrap or require workspace arguments, environment files, or Compose:
 
@@ -257,9 +267,6 @@ docker compose exec php composer validate --strict
 ```
 
 ## AI Development Tools
-
-Headroom installation, Codex routing, runtime configuration, and verification
-belong in [conventions/headroom.md](headroom.md).
 
 Context-mode usage, context preservation, and Codex hooks belong in
 [conventions/context-mode.md](context-mode.md).
