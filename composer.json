@@ -1,5 +1,6 @@
 {
     "name": "gustavo-peixoto/php-qa-scope",
+    "version": "0.1.0",
     "type": "library",
     "description": "Synchronize managed PHP QA scope blocks across PHP QA tool configuration files.",
     "license": "MIT",
